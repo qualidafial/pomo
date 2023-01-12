@@ -1,2 +1,3 @@
-# pomodoro-todo-cli
-A CLI-based pomodor + todo, inspired by pomotodo.com
+# pomo
+
+A CLI-based pomodoro tracker with linked todos, inspired by pomotodo.com
