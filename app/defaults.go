@@ -3,7 +3,6 @@ package app
 import (
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/qualidafial/pomo"
 )
 
@@ -16,49 +15,32 @@ const (
 func defaultTasks() []pomo.Task {
 	return []pomo.Task{
 		{
-			Status:  pomo.Todo,
-			Summary: "Paint the fence",
+			Status: pomo.Todo,
+			Name:   "Paint the fence",
 		},
 		{
-			Status:  pomo.Todo,
-			Summary: "foo",
+			Status: pomo.Todo,
+			Name:   "foo",
 		},
 		{
-			Status:  pomo.Todo,
-			Summary: "bar",
+			Status: pomo.Todo,
+			Name:   "bar",
 		},
 		{
-			Status:  pomo.Doing,
-			Summary: "Wax the car",
+			Status: pomo.Doing,
+			Name:   "Wax the car",
 		},
 		{
-			Status:  pomo.Doing,
-			Summary: "baz",
+			Status: pomo.Doing,
+			Name:   "baz",
 		},
 		{
-			Status:  pomo.Done,
-			Summary: "Sand the floor",
+			Status: pomo.Done,
+			Name:   "Sand the floor",
 		},
 		{
-			Status:  pomo.Done,
-			Summary: "buz",
+			Status: pomo.Done,
+			Name:   "buz",
 		},
-	}
-}
-
-func defaultKeymap() keymap {
-	return keymap{
-		startPomo: key.NewBinding(
-			key.WithKeys("ctrl+p"),
-			key.WithHelp("ctrl+p", "start pomo"),
-		),
-		pausePomo: key.NewBinding(
-			key.WithKeys("ctrl+p"),
-			key.WithHelp("ctrl+p", "pause pomo"),
-		),
-		quit: key.NewBinding(
-			key.WithKeys("ctrl+c", "ctrl+q"),
-			key.WithHelp("ctrl+q", "quit"),
-		),
 	}
 }

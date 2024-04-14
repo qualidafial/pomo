@@ -32,33 +32,27 @@ type Model struct {
 	width  int
 	height int
 
-	state  state
-	keymap keymap
-	timer  timer.Model
-	board  board.Model
-	help   help.Model
+	state state
+
+	timer timer.Model
+	board board.Model
+	help  help.Model
+
+	KeyMap
 }
 
 func New() Model {
 	return Model{
-		keymap: defaultKeymap(),
-		help:   help.New(),
-		timer:  timer.New(pomodoroDuration),
-		board:  board.New(defaultTasks()),
-	}
-}
+		width:  0,
+		height: 0,
 
-type keymap struct {
-	startPomo key.Binding
-	pausePomo key.Binding
-	quit      key.Binding
-}
+		state: stateIdle,
 
-func (m keymap) Bindings() []key.Binding {
-	return []key.Binding{
-		m.startPomo,
-		m.pausePomo,
-		m.quit,
+		help:  help.New(),
+		timer: timer.New(pomodoroDuration),
+		board: board.New(defaultTasks()),
+
+		KeyMap: DefaultKeyMap(),
 	}
 }
 
@@ -80,7 +74,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.layout()
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.keymap.startPomo):
+		case key.Matches(msg, m.KeyMap.StartPomo):
 			switch m.state {
 			case stateIdle:
 				m.state = stateActive
@@ -88,9 +82,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				cmd = tea.Batch(m.timer.Init(), m.timer.Start())
 			}
-		case key.Matches(msg, m.keymap.pausePomo):
+		case key.Matches(msg, m.KeyMap.PausePomo):
 			cmd = m.timer.Toggle()
-		case key.Matches(msg, m.keymap.quit):
+		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		default:
 			m.board, cmd = m.board.Update(msg)
@@ -111,8 +105,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.board, cmd = m.board.Update(msg)
 	}
 
-	m.keymap.startPomo.SetEnabled(m.state == stateIdle || m.state == stateBreakOver)
-	m.keymap.pausePomo.SetEnabled(m.state == stateActive)
+	m.KeyMap.StartPomo.SetEnabled(m.state == stateIdle || m.state == stateBreakOver)
+	m.KeyMap.PausePomo.SetEnabled(m.state == stateActive)
 
 	return m, cmd
 }
@@ -142,7 +136,7 @@ func (m Model) pomodoroView() string {
 	}
 
 	b.WriteString(" 🍅 ")
-	b.WriteString(m.help.ShortHelpView(m.keymap.Bindings()))
+	b.WriteString(m.help.ShortHelpView(m.KeyMap.ShortHelp()))
 
 	return b.String()
 }

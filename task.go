@@ -9,9 +9,10 @@ const (
 )
 
 type Task struct {
-	Status  Status
-	Summary string
-	Notes   string
+	ID     int
+	Status Status
+	Name   string
+	Notes  string
 }
 
 type SaveTask struct {

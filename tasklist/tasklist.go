@@ -18,7 +18,7 @@ func item(t pomo.Task) Item {
 }
 
 func (i Item) Title() string {
-	return i.Task.Summary
+	return i.Task.Name
 }
 
 func (i Item) Description() string {
@@ -26,7 +26,7 @@ func (i Item) Description() string {
 }
 
 func (i Item) FilterValue() string {
-	return i.Task.Summary + i.Task.Notes
+	return i.Task.Name + i.Task.Notes
 }
 
 type Model struct {
@@ -41,17 +41,22 @@ type Model struct {
 
 func New(title string, tasks []pomo.Task) Model {
 	delegate := list.NewDefaultDelegate()
+	delegate.SetSpacing(0)
 
-	list := list.New(nil, delegate, 0, 0)
-	list.Title = title
-	list.SetShowHelp(false)
+	l := list.New(nil, delegate, 0, 0)
+	l.Title = title
+	l.SetFilteringEnabled(false)
+	l.SetShowHelp(false)
+	l.SetShowStatusBar(false)
+	l.Styles.Title = l.Styles.Title.PaddingBottom(0)
+	l.DisableQuitKeybindings()
 
 	m := Model{
 		width:   0,
 		height:  0,
 		focused: false,
 
-		list: list,
+		list: l,
 
 		defaultBorder: lipgloss.NewStyle().
 			Border(lipgloss.HiddenBorder()),

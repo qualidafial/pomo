@@ -1,4 +1,4 @@
-package taskview
+package taskedit
 
 import (
 	"github.com/charmbracelet/bubbles/help"
@@ -19,51 +19,36 @@ const (
 )
 
 type Model struct {
+	KeyMap KeyMap
+	Styles Styles
+
 	width  int
 	height int
 
 	status pomo.Status
 
 	focused field
-	summary textinput.Model
+	name    textinput.Model
 	notes   textarea.Model
 
-	help      help.Model
-	nextField key.Binding
-
-	cancel key.Binding
-	save   key.Binding
-	enter  key.Binding
+	help help.Model
 }
 
 func New() Model {
 	title := textinput.New()
-	title.Placeholder = "Summary"
+	title.Placeholder = "Name"
 
 	desc := textarea.New()
 	desc.Placeholder = "Notes"
 
 	return Model{
-		summary: title,
-		notes:   desc,
+		Styles: DefaultStyles(),
+		KeyMap: DefaultKeyMap(),
+
+		name:  title,
+		notes: desc,
 
 		help: help.New(),
-		save: key.NewBinding(
-			key.WithKeys("ctrl+s"),
-			key.WithHelp("ctrl+s", "save"),
-		),
-		enter: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "save"),
-		),
-		cancel: key.NewBinding(
-			key.WithKeys("esc"),
-			key.WithHelp("esc", "cancel"),
-		),
-		nextField: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "next"),
-		),
 	}
 }
 
@@ -83,23 +68,24 @@ func (m *Model) focusField(f field) tea.Cmd {
 	switch f {
 	case summary:
 		m.notes.Blur()
-		return m.summary.Focus()
+		return m.name.Focus()
 	case notes:
-		m.summary.Blur()
+		m.name.Blur()
 		return m.notes.Focus()
 	}
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	lipgloss.Width("")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.save) || key.Matches(msg, m.enter):
-			return m, message.Save
-		case key.Matches(msg, m.cancel):
-			return m, message.Cancel
-		case key.Matches(msg, m.nextField):
+		case key.Matches(msg, m.KeyMap.Save) || key.Matches(msg, m.KeyMap.Enter):
+			return m, message.SaveTask(m.Task())
+		case key.Matches(msg, m.KeyMap.Cancel):
+			return m, message.CancelEdit
+		case key.Matches(msg, m.KeyMap.NextField):
 			cmd := m.focusField(m.focused + 1)
 			return m, cmd
 		}
@@ -109,50 +95,50 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch m.focused {
 	case summary:
-		m.summary, cmd = m.summary.Update(msg)
+		m.name, cmd = m.name.Update(msg)
 	case notes:
 		m.notes, cmd = m.notes.Update(msg)
 	}
 
-	m.updateBindings()
+	m.enableKeys()
 
 	return m, cmd
 }
 
-func (m *Model) updateBindings() {
-	m.save.SetEnabled(m.summary.Value() != "")
-	m.enter.SetEnabled(m.save.Enabled() && m.focused == summary)
+func (m *Model) enableKeys() {
+	m.KeyMap.Save.SetEnabled(m.name.Value() != "")
+	m.KeyMap.Enter.SetEnabled(m.KeyMap.Save.Enabled() && m.focused == summary)
 }
 
 func (m Model) Task() pomo.Task {
 	return pomo.Task{
-		Status:  m.status,
-		Summary: m.summary.Value(),
-		Notes:   m.notes.Value(),
+		Status: m.status,
+		Name:   m.name.Value(),
+		Notes:  m.notes.Value(),
 	}
 }
 
 func (m *Model) SetTask(task pomo.Task) {
 	m.status = task.Status
-	m.summary.Reset()
-	m.summary.SetValue(task.Summary)
+	m.name.Reset()
+	m.name.SetValue(task.Name)
 
 	m.notes.Reset()
 	m.notes.SetValue(task.Notes)
 
-	m.updateBindings()
+	m.enableKeys()
 }
 
 func (m Model) View() string {
-	return lipgloss.JoinVertical(lipgloss.Top,
-		"Summary:\n",
-		m.summary.View(),
-		"\nNotes:\n",
-		m.notes.View(),
-		"",
-		m.help.ShortHelpView([]key.Binding{
-			m.save, m.cancel, m.nextField,
-		}),
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
+		lipgloss.JoinVertical(lipgloss.Left,
+			"Name:",
+			m.Styles.InputField.Render(m.name.View()),
+			"\nNotes:",
+			m.Styles.InputField.Render(m.notes.View()),
+			"",
+			m.help.View(m.KeyMap),
+		),
 	)
 }
 
@@ -163,9 +149,9 @@ func (m *Model) SetSize(width, height int) {
 }
 
 func (m *Model) layout() {
-	m.summary.Width = m.width
+	m.name.Width = m.Styles.InputField.GetWidth()
 
-	m.notes.SetWidth(m.width)
+	m.notes.SetWidth(m.Styles.InputField.GetWidth())
 	m.notes.SetHeight(10)
 	m.help.Width = m.width
 }
