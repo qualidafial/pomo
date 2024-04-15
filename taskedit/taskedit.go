@@ -76,7 +76,11 @@ func (m *Model) focusField(f field) tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	lipgloss.Width("")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:

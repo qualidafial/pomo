@@ -109,7 +109,11 @@ func (m Model) updateEditing(msg tea.Msg) (Model, tea.Cmd) {
 	case message.CancelEditMsg:
 		m.state = stateKanban
 	default:
-		m.editor, cmd = m.editor.Update(msg)
+		r, c := m.editor.Update(msg)
+		if editor, ok := r.(taskedit.Model); ok {
+			m.editor = editor
+		}
+		return r, c
 	}
 
 	return m, cmd
