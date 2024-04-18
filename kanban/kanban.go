@@ -121,7 +121,7 @@ func (m Model) View() string {
 	for _, taskList := range m.taskLists {
 		taskLists = append(taskLists, taskList.View())
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Left, taskLists...)
+	return lipgloss.JoinHorizontal(lipgloss.Top, taskLists...)
 }
 
 func (m Model) Status() pomo.Status {
