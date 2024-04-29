@@ -22,8 +22,8 @@ type Model struct {
 	KeyMap KeyMap
 	Styles Styles
 
-	width  int
-	height int
+	maxWidth  int
+	maxHeight int
 
 	status pomo.Status
 
@@ -35,18 +35,21 @@ type Model struct {
 }
 
 func New() Model {
-	title := textinput.New()
-	title.Placeholder = "Name"
+	styles := DefaultStyles()
 
-	desc := textarea.New()
-	desc.Placeholder = "Notes"
+	title := textinput.New()
+	title.Placeholder = "name here"
+
+	notes := textarea.New()
+	notes.ShowLineNumbers = false
+	notes.Placeholder = "notes here"
 
 	return Model{
-		Styles: DefaultStyles(),
+		Styles: styles,
 		KeyMap: DefaultKeyMap(),
 
 		name:  title,
-		notes: desc,
+		notes: notes,
 
 		help: help.New(),
 	}
@@ -77,7 +80,6 @@ func (m *Model) focusField(f field) tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	lipgloss.Width("")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -130,28 +132,58 @@ func (m *Model) SetTask(task pomo.Task) {
 }
 
 func (m Model) View() string {
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
+	return m.Styles.Frame.Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			"Name:",
-			m.Styles.InputField.Render(m.name.View()),
-			"\nNotes:",
-			m.Styles.InputField.Render(m.notes.View()),
+			m.viewName(),
 			"",
-			m.help.View(m.KeyMap),
+			m.viewNotes(),
+			"",
+			m.viewHelp(),
 		),
 	)
 }
 
-func (m *Model) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+func (m Model) viewName() string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		"Name:",
+		m.name.View(),
+	)
+}
+
+func (m Model) viewNotes() string {
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		"Notes:",
+		m.notes.View(),
+	)
+}
+
+func (m Model) viewHelp() string {
+	return m.help.View(m.KeyMap)
+}
+
+func (m *Model) SetMaxSize(maxWidth, maxHeight int) {
+	if maxWidth > 80 {
+		maxWidth = 80
+	}
+	m.maxWidth = maxWidth
+	m.maxHeight = maxHeight
 	m.layout()
 }
 
 func (m *Model) layout() {
-	m.name.Width = m.Styles.InputField.GetWidth()
+	w := m.maxWidth - m.Styles.Frame.GetHorizontalFrameSize()
+	h := m.maxHeight - m.Styles.Frame.GetVerticalFrameSize()
 
-	m.notes.SetWidth(m.Styles.InputField.GetWidth())
-	m.notes.SetHeight(10)
-	m.help.Width = m.width
+	m.name.Width = w - 3
+
+	notesHeight := h - 4
+	if notesHeight > 4 {
+		notesHeight = 4
+	}
+	m.notes.SetWidth(w)
+	m.notes.SetHeight(notesHeight)
+
+	m.help.Width = w
 }

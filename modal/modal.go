@@ -4,7 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
-	"github.com/qualidafial/pomo/ltrim"
+	"github.com/qualidafial/pomo/skip"
 	"strings"
 )
 
@@ -72,7 +72,7 @@ func (m Model) View() string {
 		var bgRight []string
 		for _, line := range bgLines {
 			bgLeft = append(bgLeft, truncate.String(line, uint(left)))
-			bgRight = append(bgRight, ltrim.String(line, uint(right)))
+			bgRight = append(bgRight, skip.String(line, uint(right)))
 		}
 
 		lipgloss.JoinHorizontal(lipgloss.Center,
@@ -95,7 +95,7 @@ func (m Model) View() string {
 	var bgRight []string
 	for _, line := range bgMiddle {
 		bgLeft = append(bgLeft, truncate.String(line, uint(left)))
-		bgRight = append(bgRight, ltrim.String(line, uint(right)))
+		bgRight = append(bgRight, skip.String(line, uint(right)))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left,

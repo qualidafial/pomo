@@ -11,7 +11,7 @@ import (
 // Split scans a string for the transparent rune, and returns the non-
 // transparent segments with their horizontal cell offsets.
 func Split(s string, transparent rune) ([]string, []int) {
-	if !strings.ContainsRune(s, transparent) {
+	if s != "" && !strings.ContainsRune(s, transparent) {
 		return []string{s}, []int{0}
 	}
 

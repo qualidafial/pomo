@@ -2,6 +2,7 @@ package board
 
 import (
 	"fmt"
+	"github.com/qualidafial/pomo/overlay"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -159,18 +160,22 @@ func (m *Model) PromptDeleteTask(task pomo.Task) {
 }
 
 func (m Model) View() string {
+	var popup string
 	switch m.state {
 	case stateNewTask, stateEditTask:
-		return m.editor.View()
+		popup = m.viewEditor()
 	case statePromptDelete:
-		return m.deletePrompt.View()
+		popup = m.deletePrompt.View()
 	default:
-		return lipgloss.JoinVertical(lipgloss.Top,
+		return lipgloss.JoinVertical(lipgloss.Left,
 			m.viewBoard(),
 			m.viewHelp(),
 		)
-
 	}
+
+	w, h := lipgloss.Size(popup)
+	x, y := (m.width-w)/2, (m.height-h)/2
+	return overlay.Overlay(m.viewBoard(), popup, x, y)
 }
 
 func (m Model) viewBoard() string {
@@ -228,6 +233,6 @@ func (m *Model) layout() {
 	height := m.height - helpHeight
 
 	m.kanban.SetSize(m.width, height)
-	m.editor.SetSize(m.width, height)
+	m.editor.SetMaxSize(m.width-2, height-2)
 	m.help.Width = m.width
 }

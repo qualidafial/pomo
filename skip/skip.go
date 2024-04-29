@@ -1,4 +1,4 @@
-package ltrim
+package skip
 
 import (
 	"bytes"
@@ -35,7 +35,7 @@ func NewWriter(width uint) *Writer {
 	return w
 }
 
-// Write trims content at the given printable cell width, leaving any
+// Write skips content at the given printable cell width, leaving any
 // ansi sequences intact.
 func (w *Writer) Write(b []byte) (int, error) {
 	for _, c := range string(b) {

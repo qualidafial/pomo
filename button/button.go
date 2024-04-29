@@ -58,7 +58,7 @@ func (m *Model) SetMinWidth(minWidth int) {
 }
 
 func (m *Model) layout() {
-	contentWidth := m.minWidth - focused.GetHorizontalMargins()
+	contentWidth := m.minWidth - focused.GetHorizontalFrameSize()
 	if contentWidth < len(m.title) {
 		contentWidth = len(m.title)
 	}

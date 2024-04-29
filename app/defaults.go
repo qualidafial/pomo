@@ -17,30 +17,17 @@ func defaultTasks() []pomo.Task {
 		{
 			Status: pomo.Todo,
 			Name:   "Paint the fence",
-		},
-		{
-			Status: pomo.Todo,
-			Name:   "foo",
-		},
-		{
-			Status: pomo.Todo,
-			Name:   "bar",
+			Notes:  "Up, down, up down",
 		},
 		{
 			Status: pomo.Doing,
 			Name:   "Wax the car",
-		},
-		{
-			Status: pomo.Doing,
-			Name:   "baz",
+			Notes:  "Wax on, wax off",
 		},
 		{
 			Status: pomo.Done,
 			Name:   "Sand the floor",
-		},
-		{
-			Status: pomo.Done,
-			Name:   "buz",
+			Notes:  "Use little circles",
 		},
 	}
 }

@@ -223,8 +223,8 @@ func (m *Model) SetSize(w, h int) {
 }
 
 func (m *Model) layout() {
-	width := m.width - m.defaultBorder.GetHorizontalBorderSize()
-	height := m.height - m.defaultBorder.GetVerticalBorderSize()
+	width := m.width - m.defaultBorder.GetHorizontalFrameSize()
+	height := m.height - m.defaultBorder.GetVerticalFrameSize()
 
 	m.defaultBorder = m.defaultBorder.
 		Width(width).

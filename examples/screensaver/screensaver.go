@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/qualidafial/pomo/color"
-	"github.com/qualidafial/pomo/composite"
+	"github.com/qualidafial/pomo/overlay"
 )
 
 const (
@@ -100,8 +100,8 @@ func (m model) tick() tea.Cmd {
 }
 
 func (m model) View() string {
-	var elements []composite.Element
-	elements = append(elements, composite.DefaultElement{
+	var elements []overlay.Element
+	elements = append(elements, overlay.DefaultElement{
 		X: 0,
 		Y: 0,
 		Content: lipgloss.NewStyle().
@@ -113,8 +113,8 @@ func (m model) View() string {
 	for _, f := range m.floaters {
 		elements = append(elements, f)
 	}
-	return composite.Render(elements,
-		composite.WithMaxSize(m.width, m.height))
+	return overlay.Composite(elements,
+		overlay.WithMaxSize(m.width, m.height))
 }
 
 type floater struct {
@@ -171,7 +171,7 @@ func (f floater) View() string {
 		Render(f.content)
 }
 
-func (f floater) TransparentRune() rune {
+func (f floater) Transparent() rune {
 	return f.transparent
 }
 

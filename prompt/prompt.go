@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"github.com/muesli/reflow/wordwrap"
 	"sync"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -22,24 +23,24 @@ func nextID() int {
 }
 
 type Model struct {
-	Style  lipgloss.Style
+	Styles Styles
 	KeyMap KeyMap
 
-	id     int
-	width  int
-	prompt string
+	id       int
+	maxWidth int
+	prompt   string
 
 	help help.Model
 }
 
 func New() Model {
 	return Model{
-		Style:  DefaultStyle(),
+		Styles: DefaultStyles(),
 		KeyMap: DefaultKeyMap(),
 
-		id:     nextID(),
-		width:  0,
-		prompt: "",
+		id:       nextID(),
+		maxWidth: 80,
+		prompt:   "",
 
 		help: help.New(),
 	}
@@ -62,26 +63,39 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	style := m.Style.Copy()
-	maxWidth := m.width - style.GetHorizontalBorderSize() - style.GetHorizontalPadding()
-	style.MaxWidth(maxWidth)
-
-	return lipgloss.JoinVertical(lipgloss.Left,
-		m.Style.Render(m.prompt),
-		m.help.View(m.KeyMap),
+	return m.Styles.Frame.Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			m.viewPrompt(),
+			"",
+			m.viewHelp(),
+		),
 	)
 }
 
-func (m Model) ID() int {
-	return m.id
+func (m Model) viewPrompt() string {
+	width := m.maxWidth - m.Styles.Frame.GetHorizontalFrameSize()
+	return m.Styles.Prompt.Render(
+		wordwrap.String(m.prompt, width),
+	)
+}
+
+func (m Model) viewHelp() string {
+	return m.Styles.Help.Render(m.help.View(m.KeyMap))
 }
 
 func (m *Model) SetPrompt(prompt string) {
 	m.prompt = prompt
 }
 
-func (m *Model) SetWidth(w int) {
-	m.width = w
+func (m *Model) SetMaxWidth(w int) {
+	if w > 80 {
+		w = 80
+	}
+	m.maxWidth = w
+}
+
+func (m Model) ID() int {
+	return m.id
 }
 
 func (m Model) result(v bool) tea.Cmd {

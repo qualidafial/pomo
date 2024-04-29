@@ -2,6 +2,7 @@ package transparent_test
 
 import (
 	"bytes"
+	"github.com/muesli/ansi/compressor"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
@@ -74,13 +75,11 @@ func TestSplit(t *testing.T) {
 }
 
 func fg(s string, color lipgloss.TerminalColor) string {
-	return testStyle().
-		Foreground(color).
-		Render(s)
+	return compressor.String(testStyle().Foreground(color).Render(s))
 }
 
 func bg(s string, color lipgloss.TerminalColor) string {
-	return testStyle().Background(color).Render(s)
+	return compressor.String(testStyle().Background(color).Render(s))
 }
 
 func testStyle() lipgloss.Style {

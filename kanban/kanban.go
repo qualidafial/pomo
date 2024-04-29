@@ -108,6 +108,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	m.KeyMap.Left.SetEnabled(m.status > pomo.Todo)
 	m.KeyMap.Right.SetEnabled(m.status < pomo.Done)
 
+	m.KeyMap.Move.SetEnabled(selection)
 	m.KeyMap.MoveUp.SetEnabled(selection && m.KeyMap.Up.Enabled())
 	m.KeyMap.MoveDown.SetEnabled(selection && m.KeyMap.Down.Enabled())
 	m.KeyMap.MoveLeft.SetEnabled(selection && m.KeyMap.Left.Enabled())

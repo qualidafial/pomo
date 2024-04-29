@@ -8,7 +8,7 @@ import (
 	"github.com/muesli/reflow/padding"
 	"github.com/muesli/reflow/truncate"
 	"github.com/qualidafial/pomo/color"
-	"github.com/qualidafial/pomo/ltrim"
+	"github.com/qualidafial/pomo/skip"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 			w.Write([]byte(" "))
 		})
 		left := padding.String(truncate.String(background(s, color.Cyan), uint(i)), uint(i))
-		right := ltrim.String(background(s, color.Red), uint(i))
+		right := skip.String(background(s, color.Red), uint(i))
 		fmt.Printf("%s%s\n", left, right)
 	}
 }
