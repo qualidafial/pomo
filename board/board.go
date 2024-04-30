@@ -57,6 +57,14 @@ func New(tasks []pomo.Task) Model {
 	return m
 }
 
+func (m Model) Tasks() []pomo.Task {
+	return m.kanban.Tasks()
+}
+
+func (m Model) SetTasks(tasks []pomo.Task) tea.Cmd {
+	return m.kanban.SetTasks(tasks)
+}
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m.state {

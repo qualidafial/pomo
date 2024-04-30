@@ -13,9 +13,9 @@ import (
 
 func TestStore(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
-	p := pomo.Pomodoro{
+	p := pomo.Pomo{
 		State:    pomo.StateActive,
-		Start:    pomo.DateTime(now),
+		Start:    now,
 		Duration: 25 * time.Minute,
 		Tasks: []pomo.Task{
 			{
@@ -44,9 +44,9 @@ func TestStore(t *testing.T) {
 	s, err := store.New(storePath)
 	require.NoError(t, err)
 
-	key, err := s.Save(p)
+	err = s.Save("test", p)
 	require.NoError(t, err)
 
-	loaded, err := s.Read(key)
+	loaded, err := s.Read("test")
 	assert.Equal(t, p, loaded)
 }

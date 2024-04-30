@@ -207,6 +207,26 @@ func (m *Model) Remove() {
 	m.taskLists[m.status].Remove()
 }
 
+func (m Model) Tasks() []pomo.Task {
+	var tasks []pomo.Task
+	for _, taskList := range m.taskLists {
+		tasks = append(tasks, taskList.Tasks()...)
+	}
+	return tasks
+}
+
+func (m Model) SetTasks(tasks []pomo.Task) tea.Cmd {
+	tasksByStatus := map[pomo.Status][]pomo.Task{}
+	for _, task := range tasks {
+		tasksByStatus[task.Status] = append(tasksByStatus[task.Status], task)
+	}
+	var cmds []tea.Cmd
+	for status := pomo.Todo; status <= pomo.Done; status++ {
+		cmds = append(cmds, m.taskLists[status].SetTasks(tasksByStatus[status]))
+	}
+	return tea.Batch(cmds...)
+}
+
 // Task returns the currently selected task
 func (m Model) Task() (pomo.Task, int) {
 	return m.taskLists[m.status].Selection()

@@ -25,32 +25,54 @@ func (s Status) String() string {
 	}
 }
 
-func (s Status) MarshalYAML() (any, error) {
-	return s.String(), nil
-}
-
-func (s *Status) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var str string
-	if err := unmarshal(&str); err != nil {
-		return err
-	}
-
-	switch str {
+func ParseStatus(s string) (Status, error) {
+	switch s {
 	case "todo":
-		*s = Todo
+		return Todo, nil
 	case "doing":
-		*s = Doing
+		return Doing, nil
 	case "done":
-		*s = Done
+		return Done, nil
 	default:
-		return fmt.Errorf("unknown task status '%s'", s)
+		return 0, fmt.Errorf("unknown status: %s", s)
 	}
-
-	return nil
 }
 
 type Task struct {
-	Status Status `yaml:"status"`
+	Status Status
+	Name   string
+	Notes  string
+}
+
+func (t Task) MarshalYAML() (any, error) {
+	return task{
+		Status: t.Status.String(),
+		Name:   t.Name,
+		Notes:  t.Notes,
+	}, nil
+}
+
+func (t *Task) UnmarshalYAML(unmarshal func(any) error) error {
+	var data task
+	if err := unmarshal(&data); err != nil {
+		return err
+	}
+
+	status, err := ParseStatus(data.Status)
+	if err != nil {
+		return err
+	}
+
+	*t = Task{
+		Status: status,
+		Name:   data.Name,
+		Notes:  data.Notes,
+	}
+	return nil
+}
+
+type task struct {
+	Status string `yaml:"status"`
 	Name   string `yaml:"name"`
 	Notes  string `yaml:"notes,omitempty"`
 }

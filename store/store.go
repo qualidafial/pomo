@@ -35,8 +35,32 @@ type Store struct {
 	path string
 }
 
-func (s *Store) Read(key string) (pomo.Pomodoro, error) {
-	var p pomo.Pomodoro
+const (
+	currentPomo = "current"
+)
+
+func (s *Store) ClearCurrent() error {
+	err := s.Delete(currentPomo)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("clearing current pomo: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) GetCurrent() (pomo.Pomo, error) {
+	p, err := s.Read(currentPomo)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return p, fmt.Errorf("reading current pomo: %w", err)
+	}
+	return p, nil
+}
+
+func (s *Store) SaveCurrent(p pomo.Pomo) error {
+	return s.Save(currentPomo, p)
+}
+
+func (s *Store) Read(key string) (pomo.Pomo, error) {
+	var p pomo.Pomo
 
 	path := s.pomoFile(key)
 	f, err := os.Open(path)
@@ -48,23 +72,23 @@ func (s *Store) Read(key string) (pomo.Pomodoro, error) {
 	return p, errors.Join(err, f.Close())
 }
 
-func (s *Store) Save(p pomo.Pomodoro) (string, error) {
-	key := s.Key(p)
+func (s *Store) Save(key string, p pomo.Pomo) error {
 	path := s.pomoFile(key)
 
 	data, err := yaml.Marshal(p)
+	fmt.Println(string(data))
 	if err != nil {
-		return "", fmt.Errorf("encoding pomodoro to file: %w", err)
+		return fmt.Errorf("encoding pomodoro to file: %w", err)
 	}
 
 	f, err := os.Create(path)
 	if err != nil {
-		return "", fmt.Errorf("creating pomodoro file: %w", err)
+		return fmt.Errorf("creating pomodoro file: %w", err)
 	}
 
 	_, err = f.Write(data)
 	if err != nil {
-		return "", fmt.Errorf("writing pomodoro to file: %w", err)
+		return fmt.Errorf("writing pomodoro to file: %w", err)
 	}
 
 	closeErr := f.Close()
@@ -72,11 +96,15 @@ func (s *Store) Save(p pomo.Pomodoro) (string, error) {
 		closeErr = fmt.Errorf("closing pomodoro file: %w", closeErr)
 	}
 
-	return key, errors.Join(err, closeErr)
+	return errors.Join(err, closeErr)
 }
 
-func (s *Store) Key(p pomo.Pomodoro) string {
-	return time.Time(p.Start).UTC().Format(keyFormat)
+func (s *Store) Delete(key string) error {
+	return os.Remove(s.pomoFile(key))
+}
+
+func (s *Store) Key(p pomo.Pomo) string {
+	return p.Start.UTC().Format(keyFormat)
 }
 
 func (s *Store) List(fromTo ...time.Time) ([]string, error) {
@@ -111,17 +139,4 @@ func (s *Store) List(fromTo ...time.Time) ([]string, error) {
 
 func (s *Store) pomoFile(key string) string {
 	return filepath.Join(s.path, key+".yaml")
-}
-
-type pomodoro struct {
-	State    string `yaml:"state"`
-	Start    string `yaml:"start,omitempty"`
-	End      string `yaml:"end,omitempty"`
-	Duration string `yaml:"duration"`
-	Tasks    map[string][]task
-}
-
-type task struct {
-	Name  string `yaml:"name"`
-	Notes string `yaml:"notes,omitempty"`
 }

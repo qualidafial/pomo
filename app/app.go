@@ -1,7 +1,10 @@
 package app
 
 import (
+	"github.com/qualidafial/pomo"
+	"github.com/qualidafial/pomo/store"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -29,10 +32,14 @@ const (
 )
 
 type Model struct {
+	store *store.Store
+
 	width  int
 	height int
 
 	state state
+	pomo  pomo.Pomo
+	err   error
 
 	timer timer.Model
 	board board.Model
@@ -41,8 +48,11 @@ type Model struct {
 	KeyMap
 }
 
-func New() Model {
+func New(s *store.Store) Model {
+
 	return Model{
+		store: s,
+
 		width:  0,
 		height: 0,
 
@@ -61,6 +71,7 @@ func (m Model) Init() tea.Cmd {
 		m.timer.Init(),
 		tea.EnterAltScreen,
 		tea.DisableMouse,
+		m.loadCurrentPomo,
 	)
 }
 
@@ -68,6 +79,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case errMsg:
+		m.err = msg.err
+		cmd = tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
+			return clearErrMsg{}
+		})
+	case pomoMsg:
+		m.pomo = msg.pomo
+		cmd = m.board.SetTasks(m.pomo.Tasks)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -85,7 +104,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.PausePomo):
 			cmd = m.timer.Toggle()
 		case key.Matches(msg, m.KeyMap.Quit):
-			return m, tea.Quit
+			return m, tea.Sequence(m.saveCurrentPomo, tea.Quit)
 		default:
 			m.board, cmd = m.board.Update(msg)
 		}
@@ -138,6 +157,11 @@ func (m Model) pomodoroView() string {
 	b.WriteString(" 🍅 ")
 	b.WriteString(m.help.ShortHelpView(m.KeyMap.ShortHelp()))
 
+	if m.err != nil {
+		b.WriteString(" ERROR: ")
+		b.WriteString(m.err.Error())
+	}
+
 	return b.String()
 }
 
@@ -146,3 +170,31 @@ func (m *Model) layout() {
 
 	m.board.SetSize(m.width, m.height-timerHeight)
 }
+
+func (m Model) saveCurrentPomo() tea.Msg {
+	p := m.pomo
+	p.Tasks = m.board.Tasks()
+	err := m.store.SaveCurrent(p)
+	if err != nil {
+		return errMsg{err}
+	}
+	return pomoMsg{p}
+}
+
+func (m Model) loadCurrentPomo() tea.Msg {
+	p, err := m.store.GetCurrent()
+	if err != nil {
+		return errMsg{err}
+	}
+	return pomoMsg{p}
+}
+
+type pomoMsg struct {
+	pomo pomo.Pomo
+}
+
+type errMsg struct {
+	err error
+}
+
+type clearErrMsg struct{}
