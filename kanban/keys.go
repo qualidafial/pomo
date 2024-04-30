@@ -77,8 +77,6 @@ func (m KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
 			m.Navigate,
-		},
-		{
 			m.Move,
 		},
 		{

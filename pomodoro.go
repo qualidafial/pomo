@@ -10,7 +10,6 @@ type State int
 const (
 	StateIdle State = iota
 	StateActive
-	StatePaused
 	StateDone
 	StateAbandoned
 )
@@ -21,8 +20,6 @@ func (s State) String() string {
 		return "idle"
 	case StateActive:
 		return "active"
-	case StatePaused:
-		return "paused"
 	case StateDone:
 		return "done"
 	case StateAbandoned:
@@ -46,8 +43,6 @@ func (s *State) UnmarshalYAML(unmarshal func(any) error) error {
 		*s = StateIdle
 	case "active":
 		*s = StateActive
-	case "paused":
-		*s = StatePaused
 	case "done":
 		*s = StateDone
 	case "abandoned":
@@ -59,12 +54,55 @@ func (s *State) UnmarshalYAML(unmarshal func(any) error) error {
 }
 
 type Pomodoro struct {
-	State    State       `yaml:"state"`
-	Activity []TimeRange `yaml:"activity"`
-	Tasks    []Task      `yaml:"tasks"`
+	State    State         `yaml:"state"`
+	Start    DateTime      `yaml:"start,omitempty"`
+	End      DateTime      `yaml:"end,omitempty"`
+	Duration time.Duration `yaml:"duration"`
+	Tasks    []Task        `yaml:"tasks"`
 }
 
-type TimeRange struct {
-	Start time.Time  `yaml:"start"`
-	End   *time.Time `yaml:"end,omitempty"`
+type DateTime time.Time
+
+func (dt DateTime) String() string {
+	return time.Time(dt).UTC().Format(time.RFC3339)
+}
+
+func (dt DateTime) MarshalYAML() (any, error) {
+	return dt.String(), nil
+}
+
+func (dt *DateTime) UnmarshalYAML(unmarshal func(any) error) error {
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+	t, err := time.Parse(time.RFC3339, str)
+	if err != nil {
+		return err
+	}
+	*dt = DateTime(t)
+	return nil
+}
+
+type Duration time.Duration
+
+func (d Duration) String() string {
+	return time.Duration(d).String()
+}
+
+func (d Duration) MarshalYAML() (any, error) {
+	return d.String(), nil
+}
+
+func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
+	var str string
+	if err := unmarshal(&str); err != nil {
+		return err
+	}
+	t, err := time.ParseDuration(str)
+	if err != nil {
+		return err
+	}
+	*d = Duration(t)
+	return nil
 }
