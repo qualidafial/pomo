@@ -52,3 +52,8 @@ Nonfunctional requirements:
 * Guard against multiple pomodoro processes at the same time--e.g. use a lock
   file to prevent concurrent use, or use file watchers to automatically reload
   if the current pomodoro is changed by another process.
+
+## TODOs
+
+* save on every modify action
+* watch files and reload on changes
