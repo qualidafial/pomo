@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/qualidafial/pomo"
-	"github.com/qualidafial/pomo/board"
+	"github.com/qualidafial/pomo/kanban"
 	"github.com/qualidafial/pomo/store"
 	"github.com/qualidafial/pomo/timer"
 )
@@ -43,7 +43,7 @@ type Model struct {
 	err   error
 
 	timer timer.Model
-	board board.Model
+	board kanban.Model
 	help  help.Model
 
 	KeyMap
@@ -60,7 +60,7 @@ func New(s *store.Store) Model {
 
 		help:  help.New(),
 		timer: timer.New(pomodoroDuration),
-		board: board.New(defaultTasks()),
+		board: kanban.New(defaultTasks()),
 
 		KeyMap: DefaultKeyMap(),
 	}
@@ -88,7 +88,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case pomoMsg:
 		m.pomo = msg.pomo
 		cmd = m.board.SetTasks(m.pomo.Tasks)
-	case board.BoardModifiedMsg:
+	case kanban.KanbanModifiedMsg:
 		cmd = m.saveCurrentPomo
 	case tea.WindowSizeMsg:
 		m.width = msg.Width

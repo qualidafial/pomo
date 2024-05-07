@@ -1,22 +1,42 @@
 package kanban
 
 import (
+	"fmt"
+
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/message"
+	"github.com/qualidafial/pomo/overlay"
+	"github.com/qualidafial/pomo/prompt"
+	"github.com/qualidafial/pomo/taskedit"
 	"github.com/qualidafial/pomo/tasklist"
 )
 
+type mode int
+
+const (
+	modeNormal mode = iota
+	modeNewTask
+	modeEditTask
+	modePromptDelete
+)
+
 type Model struct {
+	KeyMap KeyMap
+
 	width  int
 	height int
 
+	mode      mode
 	status    pomo.Status
 	taskLists []tasklist.Model
 
-	KeyMap KeyMap
+	editor       taskedit.Model
+	deletePrompt prompt.Model
+	help         help.Model
 }
 
 func New(tasks []pomo.Task) Model {
@@ -32,18 +52,25 @@ func New(tasks []pomo.Task) Model {
 		}
 	}
 
+	h := help.New()
+	h.ShowAll = false
+
 	m := Model{
+		KeyMap: DefaultKeyMap(),
+
 		width:  0,
 		height: 0,
-
+		mode:   modeNormal,
 		status: pomo.Todo,
+
 		taskLists: []tasklist.Model{
 			tasklist.New("To Do", todos),
 			tasklist.New("Doing", doing),
 			tasklist.New("Done", done),
 		},
-
-		KeyMap: DefaultKeyMap(),
+		editor:       taskedit.New(),
+		deletePrompt: prompt.New(),
+		help:         h,
 	}
 
 	for status := range m.taskLists {
@@ -59,10 +86,26 @@ func New(tasks []pomo.Task) Model {
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
+	switch m.mode {
+	case modeNormal:
+		m, cmd = m.updateBoard(msg)
+	case modeNewTask, modeEditTask:
+		m, cmd = m.updateEditing(msg)
+	case modePromptDelete:
+		return m.updatePromptDelete(msg)
+	}
+
+	return m, cmd
+}
+
+func (m Model) updateBoard(msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, m.KeyMap.ToggleHelp):
+			m.ToggleHelp()
 		case key.Matches(msg, m.KeyMap.NewTask):
 			cmd = message.NewTask(m.status)
 		case key.Matches(msg, m.KeyMap.EditTask):
@@ -91,6 +134,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		default:
 			m.taskLists[m.status], cmd = m.taskLists[m.status].Update(msg)
 		}
+	case message.NewTaskMsg:
+		cmd = m.InputNewTask(msg.Status)
+	case message.EditTaskMsg:
+		cmd = m.EditTask(msg.Task)
+	case message.PromptDeleteTaskMsg:
+		m.PromptDeleteTask(msg.Task)
 	default:
 		m.taskLists[m.status], cmd = m.taskLists[m.status].Update(msg)
 	}
@@ -117,12 +166,103 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m Model) updateEditing(msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case message.SaveTaskMsg:
+		task := m.editor.Task()
+		if m.mode == modeNewTask {
+			cmd = m.AppendSelect(task)
+		} else {
+			cmd = m.SetTask(task)
+		}
+		m.mode = modeNormal
+	case message.CancelEditMsg:
+		m.mode = modeNormal
+	default:
+		m.editor, cmd = m.editor.Update(msg)
+	}
+
+	return m, cmd
+}
+
+func (m Model) updatePromptDelete(msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case prompt.PromptResultMsg:
+		if msg.ID == m.deletePrompt.ID() {
+			if msg.Result {
+				cmd = m.Remove()
+			}
+			m.mode = modeNormal
+		}
+	default:
+		m.deletePrompt, cmd = m.deletePrompt.Update(msg)
+	}
+	return m, cmd
+}
+
 func (m Model) View() string {
+	var popup string
+	switch m.mode {
+	case modeNewTask, modeEditTask:
+		popup = m.viewEditor()
+	case modePromptDelete:
+		popup = m.deletePrompt.View()
+	default:
+		return lipgloss.JoinVertical(lipgloss.Left,
+			m.viewBoard(),
+			m.viewHelp(),
+		)
+	}
+
+	w, h := lipgloss.Size(popup)
+	x, y := (m.width-w)/2, (m.height-h)/2
+	return overlay.Overlay(m.viewBoard(), popup, x, y)
+}
+
+func (m Model) viewBoard() string {
 	var taskLists []string
 	for _, taskList := range m.taskLists {
 		taskLists = append(taskLists, taskList.View())
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, taskLists...)
+}
+
+func (m Model) viewEditor() string {
+	return m.editor.View()
+}
+
+func (m Model) viewHelp() string {
+	return m.help.View(m.KeyMap)
+}
+
+func (m Model) FullHelp() [][]key.Binding {
+	var keys [][]key.Binding
+	keys = m.KeyMap.FullHelp()
+	switch m.mode {
+	case modeNormal:
+		keys = append(keys, m.KeyMap.FullHelp()...)
+	case modeNewTask, modeEditTask:
+		keys = append(keys, m.editor.KeyMap.FullHelp()...)
+	case modePromptDelete:
+		keys = append(keys, m.deletePrompt.KeyMap.FullHelp()...)
+	}
+	return keys
+}
+
+func (m Model) ShortHelp() []key.Binding {
+	keys := m.KeyMap.ShortHelp()
+	switch m.mode {
+	case modeNormal:
+		keys = append(keys, m.KeyMap.ShortHelp()...)
+	case modeNewTask, modeEditTask:
+		keys = append(keys, m.editor.KeyMap.ShortHelp()...)
+	case modePromptDelete:
+		keys = append(keys, m.deletePrompt.KeyMap.ShortHelp()...)
+	}
+	return keys
 }
 
 func (m Model) Status() pomo.Status {
@@ -137,6 +277,11 @@ func (m *Model) SetStatus(status pomo.Status) {
 	m.taskLists[m.status].Blur()
 	m.status = status
 	m.taskLists[m.status].Focus(i)
+}
+
+func (m *Model) ToggleHelp() {
+	m.help.ShowAll = !m.help.ShowAll
+	m.layout()
 }
 
 func (m *Model) Up() {
@@ -197,6 +342,28 @@ func (m *Model) MoveRight() tea.Cmd {
 	return tea.Sequence(cmd, m.kanbanModified)
 }
 
+func (m *Model) InputNewTask(status pomo.Status) tea.Cmd {
+	m.mode = modeNewTask
+	m.editor.SetTask(pomo.Task{
+		Status: status,
+		Name:   "",
+		Notes:  "",
+	})
+	return m.editor.Focus()
+}
+
+func (m *Model) EditTask(task pomo.Task) tea.Cmd {
+	m.mode = modeEditTask
+	m.editor.SetTask(task)
+	return m.editor.Focus()
+}
+
+func (m *Model) PromptDeleteTask(task pomo.Task) {
+	m.mode = modePromptDelete
+	prompt := fmt.Sprintf("Delete task %q?", task.Name)
+	m.deletePrompt.SetPrompt(prompt)
+}
+
 func (m *Model) AppendSelect(task pomo.Task) tea.Cmd {
 	m.SetStatus(task.Status)
 	task.Status = m.status
@@ -246,11 +413,18 @@ func (m *Model) SetSize(w, h int) {
 }
 
 func (m *Model) layout() {
+	helpHeight := lipgloss.Height(m.viewHelp())
+
+	columnHeight := m.height - helpHeight
+
+	m.editor.SetMaxSize(m.width-2, columnHeight-2)
+	m.help.Width = m.width
+
 	remainingWidth := m.width
 	for i := range m.taskLists {
 		columnWidth := remainingWidth / (len(m.taskLists) - i)
 		remainingWidth -= columnWidth
-		m.taskLists[i].SetSize(columnWidth, m.height)
+		m.taskLists[i].SetSize(columnWidth, columnHeight)
 	}
 }
 

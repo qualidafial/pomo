@@ -56,7 +56,7 @@ Nonfunctional requirements:
 ## TODOs
 
 * [x] save on every modify action
-* [ ] coalesce board and kanban packages
+* [x] coalesce board and kanban packages
 * [ ] faint border around inactive columns (instead of invisible border)
 * [ ] auto save on timer start
 * [ ] resume in progress timer on start
