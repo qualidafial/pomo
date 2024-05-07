@@ -5,6 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/qualidafial/pomo"
+	"github.com/qualidafial/pomo/color"
 )
 
 type Item struct {
@@ -59,7 +60,8 @@ func New(title string, tasks []pomo.Task) Model {
 		list: l,
 
 		defaultBorder: lipgloss.NewStyle().
-			Border(lipgloss.HiddenBorder()),
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(color.ANSI256Grayscale(0.2)),
 		focusedBorder: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("62")),
