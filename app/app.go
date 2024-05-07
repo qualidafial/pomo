@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/qualidafial/pomo"
-	"github.com/qualidafial/pomo/store"
 	"strings"
 	"time"
 
@@ -10,7 +8,10 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
+	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/board"
+	"github.com/qualidafial/pomo/store"
 	"github.com/qualidafial/pomo/timer"
 )
 
@@ -49,7 +50,6 @@ type Model struct {
 }
 
 func New(s *store.Store) Model {
-
 	return Model{
 		store: s,
 
@@ -81,12 +81,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case errMsg:
 		m.err = msg.err
+		log.Errorf("%v", msg.err)
 		cmd = tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
 			return clearErrMsg{}
 		})
 	case pomoMsg:
 		m.pomo = msg.pomo
 		cmd = m.board.SetTasks(m.pomo.Tasks)
+	case board.BoardModifiedMsg:
+		cmd = m.saveCurrentPomo
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -104,7 +107,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.PausePomo):
 			cmd = m.timer.Toggle()
 		case key.Matches(msg, m.KeyMap.Quit):
-			return m, tea.Sequence(m.saveCurrentPomo, tea.Quit)
+			return m, tea.Quit
 		default:
 			m.board, cmd = m.board.Update(msg)
 		}
@@ -187,6 +190,9 @@ func (m Model) loadCurrentPomo() tea.Msg {
 		return errMsg{err}
 	}
 	return pomoMsg{p}
+}
+
+type pomoChangedMsg struct {
 }
 
 type pomoMsg struct {

@@ -25,7 +25,7 @@ e.g. for post hoc cap ex reports, or for itemizing hourly billing.
   * Present tasks in a Kanban board with columns for each status.
   * Use arrow keys to navigate tasks, and shift+arrow to move tasks around.
 * Pomodoro timer
-  * User can start, pause, resume, or abort pomodoros.
+  * User can start, ~~pause, resume,~~ abort, or complete pomodoros.
   * Pomodoro timers count down automatically.
   * Service alerts the user when the pomodoro is over.
   * When a Pomodoro is done, prompt the user to update their tasks to reflect
@@ -55,5 +55,6 @@ Nonfunctional requirements:
 
 ## TODOs
 
-* save on every modify action
-* watch files and reload on changes
+* [x] save on every modify action
+* [ ] watch files and reload on changes
+* [ ] coalesce board and kanban packages

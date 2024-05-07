@@ -2,7 +2,6 @@ package board
 
 import (
 	"fmt"
-	"github.com/qualidafial/pomo/overlay"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -11,6 +10,7 @@ import (
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/kanban"
 	"github.com/qualidafial/pomo/message"
+	"github.com/qualidafial/pomo/overlay"
 	"github.com/qualidafial/pomo/prompt"
 	"github.com/qualidafial/pomo/taskedit"
 )
@@ -96,6 +96,8 @@ func (m Model) updateKanban(msg tea.Msg) (Model, tea.Cmd) {
 		cmd = m.EditTask(msg.Task)
 	case message.PromptDeleteTaskMsg:
 		m.PromptDeleteTask(msg.Task)
+	case kanban.KanbanModifiedMsg:
+		cmd = m.boardModified
 	default:
 		m.kanban, cmd = m.kanban.Update(msg)
 	}
@@ -130,7 +132,7 @@ func (m Model) updatePromptDelete(msg tea.Msg) (Model, tea.Cmd) {
 	case prompt.PromptResultMsg:
 		if msg.ID == m.deletePrompt.ID() {
 			if msg.Result {
-				m.kanban.Remove()
+				cmd = m.kanban.Remove()
 			}
 			m.state = stateKanban
 		}
@@ -243,4 +245,14 @@ func (m *Model) layout() {
 	m.kanban.SetSize(m.width, height)
 	m.editor.SetMaxSize(m.width-2, height-2)
 	m.help.Width = m.width
+}
+
+func (m Model) boardModified() tea.Msg {
+	return BoardModifiedMsg{
+		Tasks: m.Tasks(),
+	}
+}
+
+type BoardModifiedMsg struct {
+	Tasks []pomo.Task
 }

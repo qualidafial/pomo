@@ -160,11 +160,11 @@ func (m *Model) Right() {
 }
 
 func (m *Model) MoveUp() tea.Cmd {
-	return m.taskLists[m.status].MoveUp()
+	return tea.Sequence(m.taskLists[m.status].MoveUp(), m.kanbanModified)
 }
 
 func (m *Model) MoveDown() tea.Cmd {
-	return m.taskLists[m.status].MoveDown()
+	return tea.Sequence(m.taskLists[m.status].MoveDown(), m.kanbanModified)
 }
 
 func (m *Model) MoveLeft() tea.Cmd {
@@ -179,7 +179,7 @@ func (m *Model) MoveLeft() tea.Cmd {
 
 	// save data changes
 
-	return cmd
+	return tea.Sequence(cmd, m.kanbanModified)
 }
 
 func (m *Model) MoveRight() tea.Cmd {
@@ -194,17 +194,19 @@ func (m *Model) MoveRight() tea.Cmd {
 
 	// save data changes
 
-	return cmd
+	return tea.Sequence(cmd, m.kanbanModified)
 }
 
 func (m *Model) AppendSelect(task pomo.Task) tea.Cmd {
 	m.SetStatus(task.Status)
 	task.Status = m.status
-	return m.taskLists[m.status].AppendSelect(task)
+	cmd := m.taskLists[m.status].AppendSelect(task)
+	return tea.Sequence(cmd, m.kanbanModified)
 }
 
-func (m *Model) Remove() {
+func (m *Model) Remove() tea.Cmd {
 	m.taskLists[m.status].Remove()
+	return m.kanbanModified
 }
 
 func (m Model) Tasks() []pomo.Task {
@@ -234,7 +236,7 @@ func (m Model) Task() (pomo.Task, int) {
 
 func (m *Model) SetTask(task pomo.Task) tea.Cmd {
 	index := m.taskLists[m.status].Index()
-	return m.taskLists[m.status].SetTask(index, task)
+	return tea.Sequence(m.taskLists[m.status].SetTask(index, task), m.kanbanModified)
 }
 
 func (m *Model) SetSize(w, h int) {
@@ -250,4 +252,14 @@ func (m *Model) layout() {
 		remainingWidth -= columnWidth
 		m.taskLists[i].SetSize(columnWidth, m.height)
 	}
+}
+
+func (m Model) kanbanModified() tea.Msg {
+	return KanbanModifiedMsg{
+		Tasks: m.Tasks(),
+	}
+}
+
+type KanbanModifiedMsg struct {
+	Tasks []pomo.Task
 }

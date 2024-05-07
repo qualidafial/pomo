@@ -7,12 +7,17 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/qualidafial/pomo"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	keyFormat = "2006-01-02_150405"
+	currentPomo = "current"
+)
+
+const (
+	timeKeyFormat = "2006-01-02_150405"
 )
 
 func New(path string) (*Store, error) {
@@ -35,10 +40,6 @@ type Store struct {
 	path string
 }
 
-const (
-	currentPomo = "current"
-)
-
 func (s *Store) ClearCurrent() error {
 	err := s.Delete(currentPomo)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -56,7 +57,12 @@ func (s *Store) GetCurrent() (pomo.Pomo, error) {
 }
 
 func (s *Store) SaveCurrent(p pomo.Pomo) error {
-	return s.Save(currentPomo, p)
+	err := s.Save(currentPomo, p)
+	if err != nil {
+		return err
+	}
+	key := filepath.Join(currentPomo, s.formatTimeKey(time.Now()))
+	return s.Save(key, p)
 }
 
 func (s *Store) Read(key string) (pomo.Pomo, error) {
@@ -72,13 +78,26 @@ func (s *Store) Read(key string) (pomo.Pomo, error) {
 	return p, errors.Join(err, f.Close())
 }
 
-func (s *Store) Save(key string, p pomo.Pomo) error {
+func (s *Store) Save(key string, p pomo.Pomo) (err error) {
+	defer func() {
+		if err != nil {
+			log.Error("saving pomo", "key", key, "err", err)
+		} else {
+			log.Info("saved pomo", "key", key)
+		}
+	}()
+
 	path := s.pomoFile(key)
 
 	data, err := yaml.Marshal(p)
-	fmt.Println(string(data))
 	if err != nil {
 		return fmt.Errorf("encoding pomodoro to file: %w", err)
+	}
+
+	dir := filepath.Dir(path)
+	err = os.MkdirAll(dir, 0o700)
+	if err != nil {
+		return fmt.Errorf("creating parent directory for file: %w", err)
 	}
 
 	f, err := os.Create(path)
@@ -103,8 +122,8 @@ func (s *Store) Delete(key string) error {
 	return os.Remove(s.pomoFile(key))
 }
 
-func (s *Store) Key(p pomo.Pomo) string {
-	return p.Start.UTC().Format(keyFormat)
+func (s *Store) formatTimeKey(t time.Time) string {
+	return t.UTC().Format(timeKeyFormat)
 }
 
 func (s *Store) List(fromTo ...time.Time) ([]string, error) {
