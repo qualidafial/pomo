@@ -56,11 +56,11 @@ Nonfunctional requirements:
 ## TODOs
 
 * [x] save on every modify action
-* [ ] watch files and reload on changes
 * [ ] coalesce board and kanban packages
+* [ ] faint border around inactive columns (instead of invisible border)
 * [ ] auto save on timer start
 * [ ] resume in progress timer on start
-* [ ] guard against concurrent processes (through lock files or file watchers)
 * [ ] finalize pomo when timer goes off
 * [ ] save completed pomos in ~/.pomo/history/
-* [ ] faint border around inactive columns (instead of invisible border)
+* [ ] guard against concurrent modification (through lock files or file watchers)
+* [ ] project tags for tasks
