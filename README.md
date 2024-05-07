@@ -58,7 +58,8 @@ Nonfunctional requirements:
 * [x] save on every modify action
 * [x] coalesce board and kanban packages
 * [x] faint border around inactive columns (instead of invisible border)
-* [ ] move left goes to top, move right goes to bottom
+* [x] move left goes to top, move right goes to bottom
+* [ ] debounce saves and show save status
 * [ ] auto save on timer start
 * [ ] resume in progress timer on start
 * [ ] finalize pomo when timer goes off

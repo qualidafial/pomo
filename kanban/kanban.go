@@ -319,7 +319,7 @@ func (m *Model) MoveLeft() tea.Cmd {
 	if index >= 0 {
 		m.Left()
 		task.Status = m.status
-		cmd = m.taskLists[m.status].InsertSelect(index, task)
+		cmd = m.taskLists[m.status].InsertSelect(0, task)
 	}
 
 	// save data changes
@@ -334,7 +334,7 @@ func (m *Model) MoveRight() tea.Cmd {
 	if index >= 0 {
 		m.Right()
 		task.Status = m.status
-		cmd = m.taskLists[m.status].InsertSelect(index, task)
+		cmd = m.taskLists[m.status].AppendSelect(task)
 	}
 
 	// save data changes
