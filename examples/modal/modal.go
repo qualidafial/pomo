@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/qualidafial/pomo/color"
 	"github.com/qualidafial/pomo/modal"
-	"log"
 )
 
 func main() {

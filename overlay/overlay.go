@@ -1,13 +1,13 @@
 package overlay
 
 import (
-	"github.com/qualidafial/pomo/transparent"
 	"strings"
 
 	"github.com/muesli/reflow/ansi"
 	"github.com/muesli/reflow/padding"
 	"github.com/muesli/reflow/truncate"
 	"github.com/qualidafial/pomo/skip"
+	"github.com/qualidafial/pomo/transparent"
 )
 
 func Overlay(bg, fg string, x, y int, opts ...Option) string {

@@ -2,10 +2,10 @@ package transparent_test
 
 import (
 	"bytes"
-	"github.com/muesli/ansi/compressor"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/ansi/compressor"
 	"github.com/muesli/termenv"
 	"github.com/qualidafial/pomo/color"
 	"github.com/qualidafial/pomo/transparent"

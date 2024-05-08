@@ -1,11 +1,12 @@
 package modal
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
 	"github.com/qualidafial/pomo/skip"
-	"strings"
 )
 
 func New(background, foreground tea.Model) Model {
