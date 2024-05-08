@@ -2,7 +2,10 @@ package main
 
 import (
 	_ "embed"
+	"fmt"
 	"log"
+	"math/rand/v2"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,7 +16,7 @@ import (
 )
 
 const (
-	fps = 8
+	fps = 20
 
 	minColor = 9
 	maxColor = 15
@@ -27,25 +30,28 @@ var (
 )
 
 func main() {
+	count := 1
+	if len(os.Args) > 1 {
+		var err error
+		count, err = strconv.Atoi(os.Args[1])
+		if err != nil {
+			fmt.Printf("usage: %s [count]\n", os.Args[0])
+		}
+	}
+	var floaters []floater
+	for i := 0; i < count; i++ {
+		floaters = append(floaters, floater{
+			content:     dvd,
+			foreground:  minColor + rand.IntN(8),
+			x:           rand.IntN(100),
+			y:           rand.IntN(30),
+			dx:          (-1 + 2*rand.IntN(2)) * (1 + rand.IntN(4)),
+			dy:          (-1 + 2*rand.IntN(2)) * (1 + rand.IntN(2)),
+			transparent: ' ',
+		})
+	}
 	if _, err := tea.NewProgram(model{
-		floaters: []floater{
-			{
-				content: lipgloss.NewStyle().
-					Padding(1, 2).
-					Border(lipgloss.NormalBorder()).
-					Render("Hello, Bubbletea!"),
-				foreground:  minColor + 3,
-				x:           40,
-				y:           20,
-				dx:          -2,
-				dy:          -1,
-				transparent: ' ',
-			},
-			{
-				content:     dvd,
-				transparent: ' ',
-			},
-		},
+		floaters: floaters,
 	}).Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -134,19 +140,19 @@ func (f floater) Tick(maxWidth, maxHeight int) floater {
 
 	bounce := false
 	if f.x == 0 {
-		f.dx = 2
+		f.dx = -f.dx
 		bounce = true
 	}
 	if f.x == maxWidth-f.width {
-		f.dx = -2
+		f.dx = -f.dx
 		bounce = true
 	}
 	if f.y == 0 {
-		f.dy = 1
+		f.dy = -f.dy
 		bounce = true
 	}
 	if f.y == maxHeight-f.height {
-		f.dy = -1
+		f.dy = -f.dy
 		bounce = true
 	}
 
