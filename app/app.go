@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
@@ -40,11 +41,14 @@ type Model struct {
 
 	state state
 	pomo  pomo.Pomo
+	dirty bool
+	tag   int
 	err   error
 
-	timer timer.Model
-	board kanban.Model
-	help  help.Model
+	timer   timer.Model
+	spinner spinner.Model
+	board   kanban.Model
+	help    help.Model
 
 	KeyMap
 }
@@ -58,9 +62,10 @@ func New(s *store.Store) Model {
 
 		state: stateIdle,
 
-		help:  help.New(),
-		timer: timer.New(pomodoroDuration),
-		board: kanban.New(defaultTasks()),
+		timer:   timer.New(pomodoroDuration),
+		spinner: spinner.New(spinner.WithSpinner(spinner.Dot)),
+		board:   kanban.New(defaultTasks()),
+		help:    help.New(),
 
 		KeyMap: DefaultKeyMap(),
 	}
@@ -72,6 +77,7 @@ func (m Model) Init() tea.Cmd {
 		tea.EnterAltScreen,
 		tea.DisableMouse,
 		m.loadCurrentPomo,
+		m.spinner.Tick,
 	)
 }
 
@@ -85,11 +91,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = tea.Tick(5*time.Second, func(_ time.Time) tea.Msg {
 			return clearErrMsg{}
 		})
-	case pomoMsg:
+	case loadPomoMsg:
 		m.pomo = msg.pomo
+		m.dirty = false
 		cmd = m.board.SetTasks(m.pomo.Tasks)
 	case kanban.KanbanModifiedMsg:
-		cmd = m.saveCurrentPomo
+		m.dirty = true
+		m.tag++
+		cmd = tea.Tick(500*time.Millisecond, func(_ time.Time) tea.Msg {
+			return debounceSaveMsg{
+				tag: m.tag,
+			}
+		})
+	case debounceSaveMsg:
+		if msg.tag == m.tag {
+			cmd = m.saveCurrentPomo
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -123,6 +140,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = stateBreakOver
 			m.timer = timer.Model{}
 		}
+	case spinner.TickMsg:
+		m.spinner, cmd = m.spinner.Update(msg)
 	default:
 		m.board, cmd = m.board.Update(msg)
 	}
@@ -135,11 +154,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Top,
-		m.pomodoroView(),
+		m.viewHeader(),
 		m.board.View())
 }
 
-func (m Model) pomodoroView() string {
+func (m Model) viewHeader() string {
 	var b strings.Builder
 
 	b.WriteString("🍅 ")
@@ -159,13 +178,19 @@ func (m Model) pomodoroView() string {
 
 	b.WriteString(" 🍅 ")
 	b.WriteString(m.help.ShortHelpView(m.KeyMap.ShortHelp()))
+	b.WriteRune(' ')
 
 	if m.err != nil {
-		b.WriteString(" ERROR: ")
-		b.WriteString(m.err.Error())
+		b.WriteString(ErrorStyle.Render("✕ " + m.err.Error()))
+	} else if m.dirty {
+		b.WriteString(m.spinner.View() + "saving..")
+	} else {
+		b.WriteString(UpToDateStyle.Render("✓ up to date"))
 	}
 
-	return b.String()
+	view := b.String()
+
+	return view
 }
 
 func (m *Model) layout() {
@@ -181,7 +206,7 @@ func (m Model) saveCurrentPomo() tea.Msg {
 	if err != nil {
 		return errMsg{err}
 	}
-	return pomoMsg{p}
+	return loadPomoMsg{p}
 }
 
 func (m Model) loadCurrentPomo() tea.Msg {
@@ -189,13 +214,14 @@ func (m Model) loadCurrentPomo() tea.Msg {
 	if err != nil {
 		return errMsg{err}
 	}
-	return pomoMsg{p}
+	return loadPomoMsg{p}
 }
 
-type pomoChangedMsg struct {
+type debounceSaveMsg struct {
+	tag int
 }
 
-type pomoMsg struct {
+type loadPomoMsg struct {
 	pomo pomo.Pomo
 }
 
