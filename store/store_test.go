@@ -49,4 +49,5 @@ func TestStore(t *testing.T) {
 
 	loaded, err := s.Read("test")
 	assert.Equal(t, p, loaded)
+	require.NoError(t, err)
 }

@@ -35,8 +35,7 @@ type StartStopMsg struct {
 }
 
 type TickMsg struct {
-	ID    int
-	colon bool
+	ID int
 }
 
 type TimeoutMsg struct {
