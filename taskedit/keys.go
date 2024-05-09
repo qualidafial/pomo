@@ -6,6 +6,7 @@ import (
 
 type KeyMap struct {
 	NextField key.Binding
+	PrevField key.Binding
 
 	Save   key.Binding
 	Enter  key.Binding
@@ -17,6 +18,10 @@ func DefaultKeyMap() KeyMap {
 		NextField: key.NewBinding(
 			key.WithKeys("tab"),
 			key.WithHelp("tab", "next"),
+		),
+		PrevField: key.NewBinding(
+			key.WithKeys("shift+tab"),
+			key.WithHelp("shift+tab", "prev"),
 		),
 
 		Save: key.NewBinding(
@@ -37,19 +42,21 @@ func DefaultKeyMap() KeyMap {
 func (m KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			m.NextField,
-		},
-		{
 			m.Save,
 			m.Cancel,
+		},
+		{
+			m.NextField,
+			m.PrevField,
 		},
 	}
 }
 
 func (m KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		m.NextField,
-		m.Cancel,
 		m.Save,
+		m.Cancel,
+		m.NextField,
+		m.PrevField,
 	}
 }

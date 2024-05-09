@@ -5,12 +5,6 @@ import (
 )
 
 type KeyMap struct {
-	ToggleHelp key.Binding
-
-	NewTask    key.Binding
-	EditTask   key.Binding
-	DeleteTask key.Binding
-
 	Navigate key.Binding
 	Up       key.Binding
 	Down     key.Binding
@@ -26,11 +20,6 @@ type KeyMap struct {
 
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
-		ToggleHelp: key.NewBinding(
-			key.WithKeys("?"),
-			key.WithHelp("?", "help"),
-		),
-
 		Navigate: key.NewBinding(
 			key.WithKeys("up", "down", "left", "right"),
 			key.WithHelp("↑↓←→", "navigate"),
@@ -64,46 +53,21 @@ func DefaultKeyMap() KeyMap {
 		MoveRight: key.NewBinding(
 			key.WithKeys("shift+right"),
 		),
-
-		NewTask: key.NewBinding(
-			key.WithKeys("insert"),
-			key.WithHelp("ins", "new task"),
-		),
-		DeleteTask: key.NewBinding(
-			key.WithKeys("delete"),
-			key.WithHelp("del", "delete task"),
-		),
-		EditTask: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "edit task"),
-		),
 	}
 }
 
 func (m KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			m.ToggleHelp,
-		},
-		{
 			m.Navigate,
 			m.Move,
-		},
-		{
-			m.NewTask,
-			m.EditTask,
-			m.DeleteTask,
 		},
 	}
 }
 
 func (m KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		m.ToggleHelp,
 		m.Navigate,
 		m.Move,
-		m.NewTask,
-		m.EditTask,
-		m.DeleteTask,
 	}
 }

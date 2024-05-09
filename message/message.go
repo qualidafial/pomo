@@ -58,3 +58,15 @@ func CancelEdit() tea.Msg {
 }
 
 type CancelEditMsg struct{}
+
+func TasksModified(tasks []pomo.Task) tea.Cmd {
+	return func() tea.Msg {
+		return TasksModifiedMsg{
+			Tasks: tasks,
+		}
+	}
+}
+
+type TasksModifiedMsg struct {
+	Tasks []pomo.Task
+}

@@ -1,27 +1,12 @@
 package kanban
 
 import (
-	"fmt"
-
-	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/message"
-	"github.com/qualidafial/pomo/overlay"
-	"github.com/qualidafial/pomo/prompt"
-	"github.com/qualidafial/pomo/taskedit"
 	"github.com/qualidafial/pomo/tasklist"
-)
-
-type mode int
-
-const (
-	modeNormal mode = iota
-	modeNewTask
-	modeEditTask
-	modePromptDelete
 )
 
 type Model struct {
@@ -30,13 +15,8 @@ type Model struct {
 	width  int
 	height int
 
-	mode      mode
 	status    pomo.Status
 	taskLists []tasklist.Model
-
-	editor       taskedit.Model
-	deletePrompt prompt.Model
-	help         help.Model
 }
 
 func New(tasks []pomo.Task) Model {
@@ -52,15 +32,11 @@ func New(tasks []pomo.Task) Model {
 		}
 	}
 
-	h := help.New()
-	h.ShowAll = false
-
 	m := Model{
 		KeyMap: DefaultKeyMap(),
 
 		width:  0,
 		height: 0,
-		mode:   modeNormal,
 		status: pomo.Todo,
 
 		taskLists: []tasklist.Model{
@@ -68,9 +44,6 @@ func New(tasks []pomo.Task) Model {
 			tasklist.New("Doing", doing),
 			tasklist.New("Done", done),
 		},
-		editor:       taskedit.New(),
-		deletePrompt: prompt.New(),
-		help:         h,
 	}
 
 	for status := range m.taskLists {
@@ -86,34 +59,10 @@ func New(tasks []pomo.Task) Model {
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
-	switch m.mode {
-	case modeNormal:
-		m, cmd = m.updateBoard(msg)
-	case modeNewTask, modeEditTask:
-		m, cmd = m.updateEditing(msg)
-	case modePromptDelete:
-		return m.updatePromptDelete(msg)
-	}
-
-	return m, cmd
-}
-
-func (m Model) updateBoard(msg tea.Msg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.KeyMap.ToggleHelp):
-			m.ToggleHelp()
-		case key.Matches(msg, m.KeyMap.NewTask):
-			cmd = message.NewTask(m.status)
-		case key.Matches(msg, m.KeyMap.EditTask):
-			task, _ := m.Task()
-			cmd = message.EditTask(task)
-		case key.Matches(msg, m.KeyMap.DeleteTask):
-			task, _ := m.Task()
-			cmd = message.PromptDeleteTask(task)
 		case key.Matches(msg, m.KeyMap.Up):
 			m.Up()
 		case key.Matches(msg, m.KeyMap.Down):
@@ -134,12 +83,6 @@ func (m Model) updateBoard(msg tea.Msg) (Model, tea.Cmd) {
 		default:
 			m.taskLists[m.status], cmd = m.taskLists[m.status].Update(msg)
 		}
-	case message.NewTaskMsg:
-		cmd = m.InputNewTask(msg.Status)
-	case message.EditTaskMsg:
-		cmd = m.EditTask(msg.Task)
-	case message.PromptDeleteTaskMsg:
-		m.PromptDeleteTask(msg.Task)
 	default:
 		m.taskLists[m.status], cmd = m.taskLists[m.status].Update(msg)
 	}
@@ -148,9 +91,6 @@ func (m Model) updateBoard(msg tea.Msg) (Model, tea.Cmd) {
 	tasks := taskList.Tasks()
 	index := taskList.Index()
 	selection := index >= 0 && index < len(tasks)
-
-	m.KeyMap.EditTask.SetEnabled(selection)
-	m.KeyMap.DeleteTask.SetEnabled(selection)
 
 	m.KeyMap.Up.SetEnabled(index > 0)
 	m.KeyMap.Down.SetEnabled(index+1 < len(tasks))
@@ -166,103 +106,12 @@ func (m Model) updateBoard(msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) updateEditing(msg tea.Msg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case message.SaveTaskMsg:
-		task := m.editor.Task()
-		if m.mode == modeNewTask {
-			cmd = m.AppendSelect(task)
-		} else {
-			cmd = m.SetTask(task)
-		}
-		m.mode = modeNormal
-	case message.CancelEditMsg:
-		m.mode = modeNormal
-	default:
-		m.editor, cmd = m.editor.Update(msg)
-	}
-
-	return m, cmd
-}
-
-func (m Model) updatePromptDelete(msg tea.Msg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case prompt.PromptResultMsg:
-		if msg.ID == m.deletePrompt.ID() {
-			if msg.Result {
-				cmd = m.Remove()
-			}
-			m.mode = modeNormal
-		}
-	default:
-		m.deletePrompt, cmd = m.deletePrompt.Update(msg)
-	}
-	return m, cmd
-}
-
 func (m Model) View() string {
-	var popup string
-	switch m.mode {
-	case modeNewTask, modeEditTask:
-		popup = m.viewEditor()
-	case modePromptDelete:
-		popup = m.deletePrompt.View()
-	default:
-		return lipgloss.JoinVertical(lipgloss.Left,
-			m.viewBoard(),
-			m.viewHelp(),
-		)
-	}
-
-	w, h := lipgloss.Size(popup)
-	x, y := (m.width-w)/2, (m.height-h)/2
-	return overlay.Overlay(m.viewBoard(), popup, x, y)
-}
-
-func (m Model) viewBoard() string {
 	var taskLists []string
 	for _, taskList := range m.taskLists {
 		taskLists = append(taskLists, taskList.View())
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, taskLists...)
-}
-
-func (m Model) viewEditor() string {
-	return m.editor.View()
-}
-
-func (m Model) viewHelp() string {
-	return m.help.View(m.KeyMap)
-}
-
-func (m Model) FullHelp() [][]key.Binding {
-	var keys [][]key.Binding
-	keys = m.KeyMap.FullHelp()
-	switch m.mode {
-	case modeNormal:
-		keys = append(keys, m.KeyMap.FullHelp()...)
-	case modeNewTask, modeEditTask:
-		keys = append(keys, m.editor.KeyMap.FullHelp()...)
-	case modePromptDelete:
-		keys = append(keys, m.deletePrompt.KeyMap.FullHelp()...)
-	}
-	return keys
-}
-
-func (m Model) ShortHelp() []key.Binding {
-	keys := m.KeyMap.ShortHelp()
-	switch m.mode {
-	case modeNormal:
-		keys = append(keys, m.KeyMap.ShortHelp()...)
-	case modeNewTask, modeEditTask:
-		keys = append(keys, m.editor.KeyMap.ShortHelp()...)
-	case modePromptDelete:
-		keys = append(keys, m.deletePrompt.KeyMap.ShortHelp()...)
-	}
-	return keys
 }
 
 func (m Model) Status() pomo.Status {
@@ -277,11 +126,6 @@ func (m *Model) SetStatus(status pomo.Status) {
 	m.taskLists[m.status].Blur()
 	m.status = status
 	m.taskLists[m.status].Focus(i)
-}
-
-func (m *Model) ToggleHelp() {
-	m.help.ShowAll = !m.help.ShowAll
-	m.layout()
 }
 
 func (m *Model) Up() {
@@ -305,75 +149,49 @@ func (m *Model) Right() {
 }
 
 func (m *Model) MoveUp() tea.Cmd {
-	return tea.Sequence(m.taskLists[m.status].MoveUp(), m.kanbanModified)
+	return tea.Sequence(m.taskLists[m.status].MoveUp(), m.tasksModified())
 }
 
 func (m *Model) MoveDown() tea.Cmd {
-	return tea.Sequence(m.taskLists[m.status].MoveDown(), m.kanbanModified)
+	return tea.Sequence(m.taskLists[m.status].MoveDown(), m.tasksModified())
 }
 
 func (m *Model) MoveLeft() tea.Cmd {
 	var cmd tea.Cmd
 
-	task, index := m.taskLists[m.status].Remove()
-	if index >= 0 {
+	task, ok := m.taskLists[m.status].Remove()
+	if ok {
 		m.Left()
 		task.Status = m.status
 		cmd = m.taskLists[m.status].InsertSelect(0, task)
 	}
 
-	// save data changes
-
-	return tea.Sequence(cmd, m.kanbanModified)
+	return tea.Sequence(cmd, m.tasksModified())
 }
 
 func (m *Model) MoveRight() tea.Cmd {
 	var cmd tea.Cmd
 
-	task, index := m.taskLists[m.status].Remove()
-	if index >= 0 {
+	task, ok := m.taskLists[m.status].Remove()
+	if ok {
 		m.Right()
 		task.Status = m.status
 		cmd = m.taskLists[m.status].AppendSelect(task)
 	}
 
-	// save data changes
-
-	return tea.Sequence(cmd, m.kanbanModified)
-}
-
-func (m *Model) InputNewTask(status pomo.Status) tea.Cmd {
-	m.mode = modeNewTask
-	m.editor.SetTask(pomo.Task{
-		Status: status,
-		Name:   "",
-		Notes:  "",
-	})
-	return m.editor.Focus()
-}
-
-func (m *Model) EditTask(task pomo.Task) tea.Cmd {
-	m.mode = modeEditTask
-	m.editor.SetTask(task)
-	return m.editor.Focus()
-}
-
-func (m *Model) PromptDeleteTask(task pomo.Task) {
-	m.mode = modePromptDelete
-	prompt := fmt.Sprintf("Delete task %q?", task.Name)
-	m.deletePrompt.SetPrompt(prompt)
+	return tea.Sequence(cmd, m.tasksModified())
 }
 
 func (m *Model) AppendSelect(task pomo.Task) tea.Cmd {
 	m.SetStatus(task.Status)
 	task.Status = m.status
 	cmd := m.taskLists[m.status].AppendSelect(task)
-	return tea.Sequence(cmd, m.kanbanModified)
+	return tea.Sequence(cmd, m.tasksModified())
 }
 
 func (m *Model) Remove() tea.Cmd {
 	m.taskLists[m.status].Remove()
-	return m.kanbanModified
+	return m.tasksModified()
 }
 
 func (m Model) Tasks() []pomo.Task {
@@ -397,13 +215,16 @@ func (m Model) SetTasks(tasks []pomo.Task) tea.Cmd {
 }
 
 // Task returns the currently selected task
-func (m Model) Task() (pomo.Task, int) {
+func (m Model) Task() (pomo.Task, bool) {
 	return m.taskLists[m.status].Selection()
 }
 
 func (m *Model) SetTask(task pomo.Task) tea.Cmd {
 	index := m.taskLists[m.status].Index()
-	return tea.Sequence(m.taskLists[m.status].SetTask(index, task), m.kanbanModified)
+	return tea.Sequence(
+		m.taskLists[m.status].SetTask(index, task),
+		m.tasksModified(),
+	)
 }
 
 func (m *Model) SetSize(w, h int) {
@@ -413,27 +234,14 @@ func (m *Model) SetSize(w, h int) {
 }
 
 func (m *Model) layout() {
-	helpHeight := lipgloss.Height(m.viewHelp())
-
-	columnHeight := m.height - helpHeight
-
-	m.editor.SetMaxSize(m.width-2, columnHeight-2)
-	m.help.Width = m.width
-
 	remainingWidth := m.width
 	for i := range m.taskLists {
 		columnWidth := remainingWidth / (len(m.taskLists) - i)
 		remainingWidth -= columnWidth
-		m.taskLists[i].SetSize(columnWidth, columnHeight)
+		m.taskLists[i].SetSize(columnWidth, m.height)
 	}
 }
 
-func (m Model) kanbanModified() tea.Msg {
-	return KanbanModifiedMsg{
-		Tasks: m.Tasks(),
-	}
-}
-
-type KanbanModifiedMsg struct {
-	Tasks []pomo.Task
+func (m Model) tasksModified() tea.Cmd {
+	return message.TasksModified(m.Tasks())
 }

@@ -128,13 +128,9 @@ func (m *Model) SetTask(index int, task pomo.Task) tea.Cmd {
 	return m.list.SetItem(index, item(task))
 }
 
-func (m Model) Selection() (pomo.Task, int) {
+func (m Model) Selection() (pomo.Task, bool) {
 	index := m.list.Index()
-	item, ok := m.Task(index)
-	if !ok {
-		return pomo.Task{}, -1
-	}
-	return item, index
+	return m.Task(index)
 }
 
 func (m Model) Index() int {
@@ -156,13 +152,15 @@ func (m *Model) Select(index int) {
 	m.list.Select(index)
 }
 
-func (m *Model) Remove() (pomo.Task, int) {
-	task, index := m.Selection()
-	if index >= 0 {
+func (m *Model) Remove() (pomo.Task, bool) {
+	index := m.Index()
+	task, ok := m.Task(index)
+	if ok {
 		m.list.RemoveItem(m.list.Index())
 		m.Select(index)
+		return task, true
 	}
-	return task, index
+	return task, ok
 }
 
 func (m *Model) Insert(index int, task pomo.Task) tea.Cmd {

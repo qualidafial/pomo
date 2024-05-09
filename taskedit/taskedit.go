@@ -90,6 +90,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.NextField):
 			cmd := m.focusField(m.focused + 1)
 			return m, cmd
+		case key.Matches(msg, m.KeyMap.PrevField):
+			cmd := m.focusField(m.focused - 1)
+			return m, cmd
 		}
 	}
 
