@@ -9,7 +9,10 @@ type KeyMap struct {
 
 	Quit key.Binding
 
-	Pomo key.Binding
+	StartPomo   key.Binding
+	CancelPomo  key.Binding
+	StartBreak  key.Binding
+	CancelBreak key.Binding
 
 	NewTask    key.Binding
 	EditTask   key.Binding
@@ -28,9 +31,21 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("q", "quit"),
 		),
 
-		Pomo: key.NewBinding(
+		StartPomo: key.NewBinding(
 			key.WithKeys("p"),
-			key.WithHelp("p", "pomo…"),
+			key.WithHelp("p", "start pomo"),
+		),
+		CancelPomo: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "cancel pomo"),
+		),
+		StartBreak: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "complete pomo and start break"),
+		),
+		CancelBreak: key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "cancel break"),
 		),
 
 		NewTask: key.NewBinding(
@@ -53,7 +68,10 @@ func (m KeyMap) FullHelp() [][]key.Binding {
 		{
 			m.ToggleHelp,
 			m.Quit,
-			m.Pomo,
+			m.StartPomo,
+			m.CancelPomo,
+			m.StartBreak,
+			m.CancelBreak,
 		},
 		{
 			m.NewTask,
@@ -67,7 +85,10 @@ func (m KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
 		m.ToggleHelp,
 		m.Quit,
-		m.Pomo,
+		m.StartPomo,
+		m.CancelPomo,
+		m.StartBreak,
+		m.CancelBreak,
 		m.NewTask,
 		m.DeleteTask,
 		m.EditTask,

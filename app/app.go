@@ -30,21 +30,21 @@ const (
 	modePromptDelete
 )
 
-type state int
+type pomoState int
 
 const (
 	// No timer is running
-	stateIdle state = iota
+	pomoIdle pomoState = iota
 	// A pomodoro timer is running
-	stateActive
+	pomoActive
 	// A pomodoro timer has finished and the user is reporting what they did
-	stateReport
+	pomoEnded
 	// A short break timer is running
-	stateBreak
+	pomoBreak
 	// A long break timer is running
-	stateLongBreak
+	pomoLongBreak
 	// A break timer has finished
-	stateBreakOver
+	pomoBreakEnded
 )
 
 type Model struct {
@@ -53,9 +53,12 @@ type Model struct {
 	width  int
 	height int
 
-	mode  mode
-	state state
-	pomo  pomo.Pomo
+	mode mode
+
+	pomoState pomoState
+	current   pomo.Pomo
+	previous  []pomo.Pomo
+
 	dirty bool
 	tag   int
 	err   error
@@ -74,12 +77,12 @@ func New(s *store.Store) Model {
 	return Model{
 		store: s,
 
-		width:  0,
-		height: 0,
-		mode:   modeNormal,
-		state:  stateIdle,
+		width:     0,
+		height:    0,
+		mode:      modeNormal,
+		pomoState: pomoIdle,
 
-		timer:        timer.New(pomodoroDuration),
+		timer:        timer.New(),
 		spinner:      spinner.New(spinner.WithSpinner(spinner.MiniDot)),
 		kanban:       kanban.New(defaultTasks()),
 		editor:       taskedit.New(),
@@ -92,10 +95,9 @@ func New(s *store.Store) Model {
 
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
-		m.timer.Init(),
 		tea.EnterAltScreen,
 		tea.DisableMouse,
-		m.loadCurrentPomo,
+		m.loadState(),
 		m.spinner.Tick,
 	)
 }
@@ -107,17 +109,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-	case timer.TickMsg, timer.StartStopMsg:
+	case timer.StartMsg, timer.ResetMsg, timer.TickMsg:
 		m.timer, cmd = m.timer.Update(msg)
 	case timer.TimeoutMsg:
-		switch m.state {
-		case stateActive:
-			m.state = stateBreak
-			m.timer = timer.New(breakDuration)
-			cmd = m.timer.Init()
-		case stateBreak:
-			m.state = stateBreakOver
-			m.timer = timer.Model{}
+		switch m.pomoState {
+		case pomoActive:
+			m.pomoState = pomoEnded
+			cmd = m.timer.Reset()
+		case pomoBreak, pomoLongBreak:
+			m.pomoState = pomoBreakEnded
 		}
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -128,6 +128,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case message.PromptDeleteTaskMsg:
 		m.PromptDeleteTask(msg.Task)
 	case message.TasksModifiedMsg:
+		m.current.Tasks = m.kanban.Tasks()
 		m.dirty = true
 		m.tag++
 		cmd = tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
@@ -138,18 +139,68 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = tea.Batch(cmd, m.spinner.Tick)
 	case debounceSaveMsg:
 		if msg.tag == m.tag {
-			cmd = m.saveCurrentPomo
+			cmd = m.saveState()
 		}
-	case errMsg:
-		m.err = msg.err
-		log.Errorf("%v", msg.err)
+	case message.ErrMsg:
+		m.err = msg.Err
+		log.Errorf("%v", msg.Err)
 		cmd = tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
 			return clearErrMsg{}
 		})
-	case loadPomoMsg:
-		m.pomo = msg.pomo
+
+	case message.LoadStateMsg:
+		m.current = msg.Current
+		m.previous = msg.Previous
+
+		now := time.Now()
+		year, month, day := now.Date()
+		today := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+
+		cmd = m.kanban.SetTasks(m.current.Tasks)
+
+		// infer current pomodoro state from start/end dates:
+		// state        start          end
+		// ==================================
+		// idle         zero           n/a
+		// break        future         n/a
+		// active       past           future
+		// ended        past           past
+		// idle         before today   zero (a break that ended yesterday)
+		// break ended  earlier today  zero (a break whose resume time has passed)
+		switch {
+		case m.current.Start.IsZero():
+			// no start date: idle
+			m.pomoState = pomoIdle
+		case m.current.Start.Compare(now) >= 0:
+			// start > now: on a break
+			m.pomoState = pomoBreak
+
+			// infer break vs long break by the number of completed pomos today
+			if len(m.previous) > 0 && len(m.previous)%4 == 0 {
+				m.pomoState = pomoLongBreak
+			}
+
+			cmd = tea.Batch(cmd, m.timer.Start(m.current.Start))
+		// start < now guaranteed from here on
+		case m.current.End.After(now):
+			// start < now < end: in an active pomodoro
+			m.pomoState = pomoActive
+			cmd = tea.Batch(cmd, m.timer.Start(m.current.End))
+		case !m.current.End.IsZero():
+			// start < end < now: pomodoro has ended
+			m.pomoState = pomoEnded
+		// end is guaranteed empty from here on
+		case m.current.Start.After(today):
+			// today < start < now: break whose resume time was earlier today
+			m.pomoState = pomoBreakEnded
+		default:
+			// today < start: break whose resume time was before today
+			m.pomoState = pomoIdle
+			m.current.Start = time.Time{}
+			m.current.End = time.Time{}
+		}
+
 		m.dirty = false
-		cmd = m.kanban.SetTasks(m.pomo.Tasks)
 	default:
 		switch m.mode {
 		case modeNormal:
@@ -162,6 +213,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	_, selection := m.kanban.Task()
+
+	m.KeyMap.StartPomo.SetEnabled(m.pomoState == pomoIdle || m.pomoState == pomoBreakEnded)
+	m.KeyMap.CancelPomo.SetEnabled(m.pomoState == pomoActive)
+	m.KeyMap.StartBreak.SetEnabled(m.pomoState == pomoEnded)
+	m.KeyMap.CancelBreak.SetEnabled(m.pomoState == pomoBreak || m.pomoState == pomoLongBreak)
 
 	m.KeyMap.EditTask.SetEnabled(selection)
 	m.KeyMap.DeleteTask.SetEnabled(selection)
@@ -189,14 +245,23 @@ func (m Model) updateNormal(msg tea.Msg) (Model, tea.Cmd) {
 			if ok {
 				cmd = message.PromptDeleteTask(task)
 			}
-		case key.Matches(msg, m.KeyMap.Pomo):
-			switch m.state {
-			case stateIdle:
-				m.state = stateActive
-				m.timer = timer.New(pomodoroDuration)
-
-				cmd = tea.Batch(m.timer.Init(), m.timer.Start())
-			}
+		case key.Matches(msg, m.KeyMap.StartPomo):
+			m.pomoState = pomoActive
+			m.current.Start = time.Now()
+			m.current.End = m.current.Start.Add(pomodoroDuration)
+			cmd = tea.Batch(m.timer.Start(m.current.End), m.saveState())
+		case key.Matches(msg, m.KeyMap.CancelPomo):
+			m.pomoState = pomoIdle
+			m.current.Start = time.Time{}
+			m.current.End = time.Time{}
+			cmd = tea.Batch(m.timer.Reset(), m.saveState())
+		case key.Matches(msg, m.KeyMap.StartBreak):
+			cmd = m.completePomo()
+		case key.Matches(msg, m.KeyMap.CancelBreak):
+			m.pomoState = pomoIdle
+			m.current.Start = time.Time{}
+			m.current.End = time.Time{}
+			cmd = m.saveState()
 		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		default:
@@ -281,16 +346,18 @@ func (m Model) viewHeader() string {
 	var b strings.Builder
 
 	b.WriteString("🍅 ")
-	switch m.state {
-	case stateIdle:
+	switch m.pomoState {
+	case pomoIdle:
 		b.WriteString("idle")
-	case stateReport:
+	case pomoEnded:
 		b.WriteString("done. report tasks")
+	case pomoBreakEnded:
+		b.WriteString("break's over!")
 	default:
 		b.WriteString(m.timer.View())
-		if m.state == stateBreak {
+		if m.pomoState == pomoBreak {
 			b.WriteString(" (break)")
-		} else if m.state == stateLongBreak {
+		} else if m.pomoState == pomoLongBreak {
 			b.WriteString(" (long break)")
 		}
 	}
@@ -352,34 +419,67 @@ func (m *Model) layout() {
 	m.kanban.SetSize(m.width, kanbanHeight)
 }
 
-func (m Model) saveCurrentPomo() tea.Msg {
-	p := m.pomo
-	p.Tasks = m.kanban.Tasks()
-	err := m.store.SaveCurrent(p)
+func (m Model) loadState() tea.Cmd {
+	current, err := m.store.GetCurrent()
 	if err != nil {
-		return errMsg{err}
+		return message.Err(err)
 	}
-	return loadPomoMsg{p}
+
+	return message.LoadState(current, nil)
 }
 
-func (m Model) loadCurrentPomo() tea.Msg {
-	p, err := m.store.GetCurrent()
+func (m *Model) saveState() tea.Cmd {
+	err := m.store.SaveCurrent(m.current)
 	if err != nil {
-		return errMsg{err}
+		return message.Err(err)
 	}
-	return loadPomoMsg{p}
+	return message.LoadState(m.current, m.previous)
+}
+
+func (m *Model) completePomo() tea.Cmd {
+	var incomplete, workedOn []pomo.Task
+	for _, task := range m.kanban.Tasks() {
+		if task.Status < pomo.Done {
+			incomplete = append(incomplete, task)
+		}
+		if task.Status > pomo.Todo {
+			workedOn = append(workedOn, task)
+		}
+	}
+
+	completed := pomo.Pomo{
+		Start: m.current.Start,
+		End:   m.current.End,
+		Tasks: workedOn,
+	}
+	err := m.store.SavePomo(completed)
+	if err != nil {
+		return message.Err(fmt.Errorf("saving pomodoro: %w", err))
+	}
+
+	m.previous = append(m.previous, completed)
+
+	m.pomoState = pomoBreak
+	duration := breakDuration
+	if len(m.previous)%4 == 0 {
+		m.pomoState = pomoLongBreak
+		duration = longBreakDuration
+	}
+	breakEnd := time.Now().Add(duration)
+	m.current.Start = breakEnd
+	m.current.End = time.Time{}
+	m.current.Tasks = incomplete
+
+	err = m.store.SaveCurrent(m.current)
+	if err != nil {
+		return message.Err(fmt.Errorf("updating current pomodoro: %w", err))
+	}
+
+	return tea.Batch(m.timer.Start(breakEnd), m.kanban.SetTasks(incomplete))
 }
 
 type debounceSaveMsg struct {
 	tag int
-}
-
-type loadPomoMsg struct {
-	pomo pomo.Pomo
-}
-
-type errMsg struct {
-	err error
 }
 
 type clearErrMsg struct{}

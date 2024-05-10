@@ -14,6 +14,7 @@ import (
 
 const (
 	currentPomo = "current"
+	historyKey  = "history"
 )
 
 const (
@@ -21,14 +22,20 @@ const (
 )
 
 func New(path string) (*Store, error) {
-	path, err := filepath.Abs(path)
+	storeDir, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("getting store directory absolute path: %w", err)
 	}
 
-	err = os.MkdirAll(path, 0700)
+	err = os.MkdirAll(storeDir, 0700)
 	if err != nil {
-		return nil, fmt.Errorf("creating store directory: %w", err)
+		return nil, fmt.Errorf("creating pomo store directory: %w", err)
+	}
+
+	historyDir := filepath.Join(path, historyKey)
+	err = os.MkdirAll(historyDir, 0700)
+	if err != nil {
+		return nil, fmt.Errorf("creating pomo history directory: %w", err)
 	}
 
 	return &Store{
@@ -62,6 +69,11 @@ func (s *Store) SaveCurrent(p pomo.Pomo) error {
 		return err
 	}
 	key := filepath.Join(currentPomo, s.formatTimeKey(time.Now()))
+	return s.Save(key, p)
+}
+
+func (s *Store) SavePomo(p pomo.Pomo) error {
+	key := filepath.Join(historyKey, s.formatTimeKey(p.End))
 	return s.Save(key, p)
 }
 
@@ -135,7 +147,9 @@ func (s *Store) List(fromTo ...time.Time) ([]string, error) {
 		to = fromTo[1].Format(time.DateOnly)
 	}
 
-	entries, err := os.ReadDir(s.path)
+	historyDir := filepath.Join(s.path, historyKey)
+
+	entries, err := os.ReadDir(historyDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading pomodoro directory: %w", err)
 	}

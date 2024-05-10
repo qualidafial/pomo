@@ -14,9 +14,8 @@ import (
 func TestStore(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	p := pomo.Pomo{
-		State:    pomo.StateActive,
-		Start:    now,
-		Duration: 25 * time.Minute,
+		Start: now,
+		End:   now.Add(25 * time.Minute),
 		Tasks: []pomo.Task{
 			{
 				Status: pomo.Todo,
