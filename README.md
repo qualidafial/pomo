@@ -60,9 +60,15 @@ Nonfunctional requirements:
 * [x] faint border around inactive columns (instead of invisible border)
 * [x] move left goes to top, move right goes to bottom
 * [x] debounce saves and show save status
-* [ ] auto save on timer start
-* [ ] resume in progress timer on start
-* [ ] finalize pomo when timer goes off
-* [ ] save completed pomos in ~/.pomo/history/
+* [x] auto save on timer start
+* [x] resume in progress timer on start
+* [x] finalize pomo when timer goes off
+* [x] save completed pomos in ~/.pomo/history/
+* [ ] load pomo history on start
+* [ ] show current pomodoro number for today
+* [ ] swap in current.yaml instead of saving history of changes
 * [ ] guard against concurrent modification (through lock files or file watchers)
 * [ ] project tags for tasks
+* [ ] responsive kanban layout when the screen is too small for 3 columns
+* [ ] show alert when pomodoro or break ends
+* [ ] prompt start pomodoro on task changes (e.g. when status is idle or break ended)
