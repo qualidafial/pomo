@@ -121,8 +121,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case pomoActive:
 			m.pomoState = pomoEnded
 			cmd = m.timer.Reset()
+			err := beeep.Notify("pomo", "Pomodoro completed! Update your task statuses and start your break!", "")
+			if err != nil {
+				log.Error("sending notification at end of pomodoro", "err", err)
+			}
 		case pomoBreak, pomoLongBreak:
 			m.pomoState = pomoBreakEnded
+			beeep.Notify("pomo", "Break's over! Time to start another pomodoro!", "")
+			log.Error("sending notification at end of break", "err", err)
 		}
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
