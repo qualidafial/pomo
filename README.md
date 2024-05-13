@@ -64,11 +64,14 @@ Nonfunctional requirements:
 * [x] resume in progress timer on start
 * [x] finalize pomo when timer goes off
 * [x] save completed pomos in ~/.pomo/history/
+* [x] play sound when pomodoro or break ends
+* [ ] show alert when pomodoro or break ends
 * [ ] load pomo history on start
-* [ ] show current pomodoro number for today
+* [ ] show number of pomodoros completed today
 * [ ] swap in current.yaml instead of saving history of changes
 * [ ] guard against concurrent modification (through lock files or file watchers)
 * [ ] project tags for tasks
 * [ ] responsive kanban layout when the screen is too small for 3 columns
-* [ ] show alert when pomodoro or break ends
 * [ ] prompt start pomodoro on task changes (e.g. when status is idle or break ended)
+* [ ] show progress bar when pomodoro timer is running
+* [ ] make pomodoro section more prominent when user action is wanted (idle, pomo ended, break ended)

@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/gen2brain/beeep"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/kanban"
 	"github.com/qualidafial/pomo/message"
@@ -112,6 +113,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case timer.StartMsg, timer.ResetMsg, timer.TickMsg:
 		m.timer, cmd = m.timer.Update(msg)
 	case timer.TimeoutMsg:
+		err := beeep.Beep(0, 0)
+		if err != nil {
+			log.Error("sending beep on timer expiration", "err", err)
+		}
 		switch m.pomoState {
 		case pomoActive:
 			m.pomoState = pomoEnded
