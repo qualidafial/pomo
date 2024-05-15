@@ -142,7 +142,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.current.Tasks = m.kanban.Tasks()
 		m.dirty = true
 		m.tag++
-		cmd = tea.Tick(2*time.Second, func(_ time.Time) tea.Msg {
+		cmd = tea.Tick(250*time.Millisecond, func(_ time.Time) tea.Msg {
 			return debounceSaveMsg{
 				tag: m.tag,
 			}
