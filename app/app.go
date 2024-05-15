@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/gen2brain/beeep"
 	"github.com/qualidafial/pomo"
+	"github.com/qualidafial/pomo/config"
 	"github.com/qualidafial/pomo/kanban"
 	"github.com/qualidafial/pomo/message"
 	"github.com/qualidafial/pomo/overlay"
@@ -49,7 +50,8 @@ const (
 )
 
 type Model struct {
-	store *store.Store
+	config config.Config
+	store  *store.Store
 
 	width  int
 	height int
@@ -74,9 +76,10 @@ type Model struct {
 	KeyMap KeyMap
 }
 
-func New(s *store.Store) Model {
+func New(cfg config.Config, s *store.Store) Model {
 	return Model{
-		store: s,
+		config: cfg,
+		store:  s,
 
 		width:     0,
 		height:    0,
@@ -259,7 +262,7 @@ func (m Model) updateNormal(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.StartPomo):
 			m.pomoState = pomoActive
 			m.current.Start = time.Now()
-			m.current.End = m.current.Start.Add(pomodoroDuration)
+			m.current.End = m.current.Start.Add(m.config.PomodoroDuration)
 			cmd = tea.Batch(m.timer.Start(m.current.End), m.saveState())
 		case key.Matches(msg, m.KeyMap.CancelPomo):
 			m.pomoState = pomoIdle
@@ -471,10 +474,10 @@ func (m *Model) completePomo() tea.Cmd {
 	m.previous = append(m.previous, completed)
 
 	m.pomoState = pomoBreak
-	duration := breakDuration
+	duration := m.config.BreakDuration
 	if len(m.previous)%4 == 0 {
 		m.pomoState = pomoLongBreak
-		duration = longBreakDuration
+		duration = m.config.LongBreakDuration
 	}
 	breakEnd := time.Now().Add(duration)
 	m.current.Start = breakEnd

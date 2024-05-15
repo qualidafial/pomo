@@ -21,37 +21,37 @@ type KeyMap struct {
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
 		Navigate: key.NewBinding(
-			key.WithKeys("up", "down", "left", "right"),
-			key.WithHelp("↑↓←→", "navigate"),
-		),
-		Up: key.NewBinding(
-			key.WithKeys("up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down"),
+			key.WithKeys("left", "down", "up", "right", "h", "j", "k", "l"),
+			key.WithHelp("←↓↑→/hjkl", "navigate"),
 		),
 		Left: key.NewBinding(
-			key.WithKeys("left"),
+			key.WithKeys("left", "h"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down", "j"),
+		),
+		Up: key.NewBinding(
+			key.WithKeys("up", "k"),
 		),
 		Right: key.NewBinding(
-			key.WithKeys("right"),
+			key.WithKeys("right", "l"),
 		),
 
 		Move: key.NewBinding(
-			key.WithKeys("shift+up", "shift+down", "shift+left", "shift+right"),
-			key.WithHelp("shift+↑↓←→", "move task"),
-		),
-		MoveUp: key.NewBinding(
-			key.WithKeys("shift+up"),
-		),
-		MoveDown: key.NewBinding(
-			key.WithKeys("shift+down"),
+			key.WithKeys("shift+left", "shift+down", "shift+up", "shift+right", "H", "J", "K", "L"),
+			key.WithHelp("shift+←↓↑→/hjkl", "move task"),
 		),
 		MoveLeft: key.NewBinding(
-			key.WithKeys("shift+left"),
+			key.WithKeys("shift+left", "H"),
+		),
+		MoveDown: key.NewBinding(
+			key.WithKeys("shift+down", "J"),
+		),
+		MoveUp: key.NewBinding(
+			key.WithKeys("shift+up", "K"),
 		),
 		MoveRight: key.NewBinding(
-			key.WithKeys("shift+right"),
+			key.WithKeys("shift+right", "L"),
 		),
 	}
 }

@@ -20,6 +20,18 @@ You can also build the application from the repository root:
 make
 ```
 
+## Configuration
+
+Pomodoro and break durations may be configured by modifying
+`~/.pomo/config.yaml`, which is auto-generated the first time `pomo` is run:
+
+```yaml
+timer:
+    break: 5m
+    long-break: 15m
+    pomodoro: 25m
+```
+
 ## Features
 
 * Task management

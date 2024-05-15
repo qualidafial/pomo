@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
 	"github.com/qualidafial/pomo/app"
+	"github.com/qualidafial/pomo/config"
 	"github.com/qualidafial/pomo/store"
 )
 
@@ -39,7 +40,12 @@ func main() {
 		log.Fatal(fmt.Errorf("creating pomo data store: %w", err))
 	}
 
-	p := tea.NewProgram(app.New(s))
+	cfg, err := config.Load(dataDir)
+	if err != nil {
+		log.Fatal(fmt.Errorf("loading configuration: %w", err))
+	}
+
+	p := tea.NewProgram(app.New(cfg, s))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("error: %v", err)
 		os.Exit(1)

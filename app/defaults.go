@@ -1,15 +1,7 @@
 package app
 
 import (
-	"time"
-
 	"github.com/qualidafial/pomo"
-)
-
-const (
-	pomodoroDuration  = 25 * time.Minute
-	breakDuration     = 5 * time.Minute
-	longBreakDuration = 15 * time.Minute
 )
 
 func defaultTasks() []pomo.Task {
