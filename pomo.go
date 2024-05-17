@@ -33,20 +33,14 @@ func (p *Pomo) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 
-	var start time.Time
-	if data.Start != "" {
-		start, err = time.Parse(time.RFC3339Nano, data.Start)
-		if err != nil {
-			return nil
-		}
+	start, err := parseTime(data.Start)
+	if err != nil {
+		return err
 	}
 
-	var end time.Time
-	if data.End != "" {
-		end, err = time.Parse(time.RFC3339Nano, data.End)
-		if err != nil {
-			return nil
-		}
+	end, err := parseTime(data.End)
+	if err != nil {
+		return err
 	}
 
 	*p = Pomo{
@@ -61,4 +55,11 @@ type pomoYaml struct {
 	Start string `yaml:"start,omitempty"`
 	End   string `yaml:"end,omitempty"`
 	Tasks []Task `yaml:"tasks,omitempty"`
+}
+
+func parseTime(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339Nano, s)
 }

@@ -1,12 +1,18 @@
 package kanban
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/message"
 	"github.com/qualidafial/pomo/tasklist"
+)
+
+const (
+	minColumnWidth = 30
 )
 
 type Model struct {
@@ -107,11 +113,22 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	var taskLists []string
-	for _, taskList := range m.taskLists {
-		taskLists = append(taskLists, taskList.View())
+	visibleColumns := min(3, max(1, m.width/minColumnWidth))
+
+	firstColumn := max(pomo.Todo, m.status-pomo.Status(visibleColumns-1))
+	lastColumn := min(pomo.Done, firstColumn+pomo.Status(visibleColumns-1))
+
+	var columns []string
+	remainingWidth := m.width
+	for colIndex := firstColumn; colIndex <= lastColumn; colIndex++ {
+		columnWidth := max(remainingWidth / visibleColumns)
+		remainingWidth -= columnWidth
+		visibleColumns--
+		col := m.taskLists[colIndex]
+		col.SetSize(columnWidth, m.height)
+		columns = append(columns, col.View())
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, taskLists...)
+	return lipgloss.JoinHorizontal(lipgloss.Top, columns...)
 }
 
 func (m Model) Status() pomo.Status {
@@ -163,6 +180,7 @@ func (m *Model) MoveLeft() tea.Cmd {
 	if ok {
 		m.Left()
 		task.Status = m.status
+		task.UpdatedAt = time.Now()
 		cmd = m.taskLists[m.status].InsertSelect(0, task)
 	}
 
@@ -176,6 +194,7 @@ func (m *Model) MoveRight() tea.Cmd {
 	if ok {
 		m.Right()
 		task.Status = m.status
+		task.UpdatedAt = time.Now()
 		cmd = m.taskLists[m.status].AppendSelect(task)
 	}
 
@@ -230,16 +249,6 @@ func (m *Model) SetTask(task pomo.Task) tea.Cmd {
 func (m *Model) SetSize(w, h int) {
 	m.width = w
 	m.height = h
-	m.layout()
-}
-
-func (m *Model) layout() {
-	remainingWidth := m.width
-	for i := range m.taskLists {
-		columnWidth := remainingWidth / (len(m.taskLists) - i)
-		remainingWidth -= columnWidth
-		m.taskLists[i].SetSize(columnWidth, m.height)
-	}
 }
 
 func (m Model) tasksModified() tea.Cmd {

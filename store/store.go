@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -70,6 +72,25 @@ func (s *Store) SaveCurrent(p pomo.Pomo) error {
 	}
 	key := filepath.Join(currentPomo, s.formatTimeKey(time.Now()))
 	return s.Save(key, p)
+}
+
+func (s *Store) List(fromTo ...time.Time) ([]pomo.Pomo, error) {
+	keys, err := s.ListKeys(fromTo...)
+	if err != nil {
+		return nil, fmt.Errorf("listing keys: %w", err)
+	}
+
+	slices.Sort(keys)
+
+	var pomos []pomo.Pomo
+	for _, key := range keys {
+		pomo, err := s.Read(key)
+		if err != nil {
+			return pomos, fmt.Errorf("reading key %s: %w", key, err)
+		}
+		pomos = append(pomos, pomo)
+	}
+	return pomos, nil
 }
 
 func (s *Store) SavePomo(p pomo.Pomo) error {
@@ -138,13 +159,13 @@ func (s *Store) formatTimeKey(t time.Time) string {
 	return t.UTC().Format(timeKeyFormat)
 }
 
-func (s *Store) List(fromTo ...time.Time) ([]string, error) {
+func (s *Store) ListKeys(fromTo ...time.Time) ([]string, error) {
 	var from, to string
 	if len(fromTo) > 0 {
-		from = fromTo[0].Format(time.DateOnly)
+		from = fromTo[0].UTC().Format(timeKeyFormat)
 	}
 	if len(fromTo) > 1 {
-		to = fromTo[1].Format(time.DateOnly)
+		to = fromTo[1].UTC().Format(timeKeyFormat)
 	}
 
 	historyDir := filepath.Join(s.path, historyKey)
@@ -157,14 +178,15 @@ func (s *Store) List(fromTo ...time.Time) ([]string, error) {
 	var keys []string
 
 	for _, entry := range entries {
-		name := entry.Name()
+		name := strings.TrimSuffix(entry.Name(), ".yaml")
 		if from != "" && name < from {
 			continue
 		}
 		if to != "" && name >= to {
 			continue
 		}
-		keys = append(keys, name)
+
+		keys = append(keys, filepath.Join(historyKey, name))
 	}
 
 	return keys, nil

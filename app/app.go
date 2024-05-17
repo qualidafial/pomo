@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/gen2brain/beeep"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/config"
 	"github.com/qualidafial/pomo/kanban"
@@ -66,11 +68,11 @@ type Model struct {
 	tag   int
 	err   error
 
-	timer        timer.Model
-	spinner      spinner.Model
 	kanban       kanban.Model
 	editor       taskedit.Model
 	deletePrompt prompt.Model
+	timer        timer.Model
+	spinner      spinner.Model
 	help         help.Model
 
 	KeyMap KeyMap
@@ -86,9 +88,9 @@ func New(cfg config.Config, s *store.Store) Model {
 		mode:      modeNormal,
 		pomoState: pomoIdle,
 
+		kanban:       kanban.New(defaultTasks()),
 		timer:        timer.New(),
 		spinner:      spinner.New(spinner.WithSpinner(spinner.MiniDot)),
-		kanban:       kanban.New(defaultTasks()),
 		editor:       taskedit.New(),
 		deletePrompt: prompt.New(),
 		help:         help.New(),
@@ -293,6 +295,7 @@ func (m Model) updateEditing(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case message.SaveTaskMsg:
 		task := m.editor.Task()
+		task.UpdatedAt = time.Now()
 		if m.mode == modeNewTask {
 			cmd = m.kanban.AppendSelect(task)
 		} else {
@@ -331,64 +334,135 @@ func (m *Model) ToggleHelp() {
 func (m Model) View() string {
 	m.layout()
 
+	callToAction := m.viewCallToAction()
+
+	var sections []string
+	if callToAction != "" {
+		sections = append(sections, callToAction)
+	}
+
+	sections = append(sections,
+		m.kanban.View(),
+		m.viewFooter(),
+	)
+	if m.mode == modeNormal && m.help.ShowAll {
+		sections = append(sections, Help.Render(m.help.View(m)))
+	}
+
+	view := lipgloss.JoinVertical(lipgloss.Top, sections...)
+
 	var popup string
 	switch m.mode {
 	case modeNewTask, modeEditTask:
 		popup = m.editor.View()
 	case modePromptDelete:
 		popup = m.deletePrompt.View()
-	default:
-		return lipgloss.JoinVertical(lipgloss.Top,
-			m.viewHeader(),
-			m.kanban.View(),
-			m.help.View(m),
-		)
 	}
-
-	background := lipgloss.JoinVertical(lipgloss.Top,
-		m.viewHeader(),
-		m.kanban.View(),
-		// hide main help when popup is visible
-	)
-
-	w, h := lipgloss.Size(popup)
-	x, y := (m.width-w)/2, (m.height-h)/2
-	return overlay.Overlay(background, popup, x, y)
-}
-
-func (m Model) viewHeader() string {
-	var b strings.Builder
-
-	b.WriteString("🍅 ")
-	switch m.pomoState {
-	case pomoIdle:
-		b.WriteString("idle")
-	case pomoEnded:
-		b.WriteString("done. report tasks")
-	case pomoBreakEnded:
-		b.WriteString("break's over!")
-	default:
-		b.WriteString(m.timer.View())
-		if m.pomoState == pomoBreak {
-			b.WriteString(" (break)")
-		} else if m.pomoState == pomoLongBreak {
-			b.WriteString(" (long break)")
-		}
+	if popup != "" {
+		w, h := lipgloss.Size(popup)
+		x, y := (m.width-w)/2, (m.height-h)/2
+		view = overlay.Overlay(view, popup, x, y)
 	}
-
-	b.WriteString(" 🍅 ")
-
-	if m.err != nil {
-		b.WriteString(ErrorStyle.Render("✕ " + m.err.Error()))
-	} else if m.dirty {
-		b.WriteString(DirtyStyle.Render(m.spinner.View() + " unsaved changes"))
-	} else {
-		b.WriteString(UpToDateStyle.Render("✓ saved"))
-	}
-
-	view := b.String()
 
 	return view
+}
+
+func (m Model) viewCallToAction() string {
+	var callToAction string
+	switch m.pomoState {
+	case pomoIdle:
+		callToAction = "No pomodoro active."
+	case pomoEnded:
+		callToAction = "Your pomodoro has ended. Update tasks and start your break!"
+	case pomoBreakEnded:
+		callToAction = "Your break is over. Time to start another pomodoro!"
+	default:
+		return ""
+	}
+	width := m.width - CallToAction.GetHorizontalFrameSize()
+	callToAction = wordwrap.String(callToAction, width)
+	return CallToAction.Width(width).Render(callToAction)
+}
+
+func (m Model) viewFooter() string {
+	var state string
+
+	switch m.pomoState {
+	case pomoIdle:
+		state = "idle"
+	case pomoEnded:
+		state = fmt.Sprintf("pomo %d ended -- report tasks", len(m.previous)+1)
+	case pomoBreakEnded:
+		state = "break ended -- start another pomo"
+	case pomoActive:
+		state = fmt.Sprintf("pomo %d in progress", len(m.previous)+1)
+	case pomoBreak:
+		state = "on a break"
+	case pomoLongBreak:
+		state = "on a long break"
+	}
+	state = FooterState.Render(state)
+
+	timer := FooterTimer.Render("🍅", m.timer.View(), "🍅")
+
+	var pomosToday strings.Builder
+	if m.config.DailyGoal > 0 && len(m.previous) >= m.config.DailyGoal {
+		pomosToday.WriteString("🏆 ")
+	}
+	pomosToday.WriteString(strconv.Itoa(len(m.previous)))
+	if m.config.DailyGoal > 0 {
+		pomosToday.WriteRune('/')
+		pomosToday.WriteString(strconv.Itoa(m.config.DailyGoal))
+	}
+	if len(m.previous) == 1 && m.config.DailyGoal == 0 {
+		pomosToday.WriteString(" pomo")
+	} else {
+		pomosToday.WriteString(" pomos")
+	}
+	var pomos string
+	if m.config.DailyGoal > 0 && len(m.previous) >= m.config.DailyGoal {
+		pomos = FooterPomosGoal.Render(pomosToday.String())
+	} else {
+		pomos = FooterPomos.Render(pomosToday.String())
+	}
+
+	var errMessage string
+	if m.err != nil {
+		errMessage = fmt.Sprintf("error: %v", m.err)
+		errMessage = FooterError.Render(errMessage)
+	}
+
+	var saveState string
+	if m.dirty {
+		saveState = DirtyStyle.Render(m.spinner.View() + " saving")
+	} else {
+		saveState = UpToDateStyle.Render("✓ saved")
+	}
+	saveState = FooterSaveState.Render(saveState)
+
+	helpMessage := FooterHelp.Render("? help")
+
+	w := lipgloss.Width
+	spacerWidth := max(0, m.width-w(state)-w(timer)-w(errMessage)-w(pomos)-w(saveState)-w(helpMessage))
+	spacer := strings.Repeat(" ", spacerWidth)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top,
+		state,
+		timer,
+		errMessage,
+		spacer,
+		pomos,
+		saveState,
+		helpMessage,
+	)
+}
+
+func (m Model) viewHelp() string {
+	var help string
+	if m.help.ShowAll {
+		help = Help.Render(m.help.View(m))
+	}
+	return help
 }
 
 func (m *Model) InputNewTask(status pomo.Status) tea.Cmd {
@@ -422,11 +496,21 @@ func (m Model) ShortHelp() []key.Binding {
 }
 
 func (m *Model) layout() {
-	m.help.Width = m.width
+	m.help.Width = m.width - Help.GetHorizontalFrameSize()
 
-	headerHeight := 1
-	helpHeight := lipgloss.Height(m.help.View(m))
-	kanbanHeight := m.height - headerHeight - helpHeight
+	var ctaHeight int
+	if cta := m.viewCallToAction(); cta != "" {
+		ctaHeight = lipgloss.Height(cta)
+	}
+
+	footerHeight := 1
+
+	var helpHeight int
+	if m.help.ShowAll {
+		helpHeight = lipgloss.Height(m.viewHelp())
+	}
+
+	kanbanHeight := m.height - ctaHeight - footerHeight - helpHeight
 
 	m.editor.SetMaxSize(m.width-2, kanbanHeight-2)
 
@@ -439,7 +523,16 @@ func (m Model) loadState() tea.Cmd {
 		return message.Err(err)
 	}
 
-	return message.LoadState(current, nil)
+	now := time.Now()
+	year, month, day := now.Date()
+	today := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+
+	previous, err := m.store.List(today)
+	if err != nil {
+		return message.Err(err)
+	}
+
+	return message.LoadState(current, previous)
 }
 
 func (m *Model) saveState() tea.Cmd {

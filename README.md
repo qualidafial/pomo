@@ -22,10 +22,12 @@ make
 
 ## Configuration
 
-Pomodoro and break durations may be configured by modifying
-`~/.pomo/config.yaml`, which is auto-generated the first time `pomo` is run:
+`pomo` may be configured by modifying `~/.pomo/config.yaml`, which is
+automatically generated the first time it runs:
 
 ```yaml
+pomo:
+    daily-goal: 8
 timer:
     break: 5m
     long-break: 15m
@@ -54,7 +56,7 @@ timer:
     start the break.
   * Automatically select a short break (5 minutes) or long break (15 minutes)
     based on how many pomodoros have been completed today.
-  * User can pause, resume, and abort breaks.
+  * User can start or cancel breaks.
   * Plays an alarm and display a notification when the break is over.
   * Doesn't start the next pomodoro until the user starts it.
   * Resume any running pomodoro or break timers if the user exits `pomo` and
@@ -65,20 +67,12 @@ timer:
 
 * Task management
   * Manage a list of tags that may be attached to tasks.
-  * Ask the user if they want to start a pomodoro if they move a task into Doing
-    or Done when there is not an active pomodoro. Completed pomodoros that are
-    not yet reported are considered active.
 * Pomodoro timer
-  * Automatically select a short break (5 minutes) or long break (15 minutes)
-    based on how many .
-  * User can pause, resume, and abort breaks.
-  * Service alerts the user when the break is over.
-  * User explicitly starts the next pomodoro
-  * Active timers run in a background task, so that a terminal can be popped
-    even when the application is closed.
+  * Active timers run in a background task, so that a notification can be shown
+    even when a `pomo` process is not running.
 * Pomodoro history
-  * User can browse past pomodoros in the app. They can also view them in plain
-    text in the pomo data folder (probably in `~/.pomo/data/`).
+  * User can browse past pomos in the app. They can also view them in plain text
+    in the pomo data folder (probably in `~/.pomo/data/`).
   * Generate reports based on pomodoro history to facilitate time/task
     estimates, e.g. for post hoc cap ex reports, or for itemizing hourly
     billing.
@@ -88,14 +82,6 @@ timer:
 
 ## TODOs
 
-* [ ] move pomodoro header to the bottom row, below the help line
-* [ ] show progress bar when pomodoro timer is running
-* [ ] make pomodoro section more prominent when user action is wanted (idle, pomo ended, break ended)
-* [ ] load pomo history on start
-* [ ] show number of pomodoros completed today
+* [ ] project tags for tasks
 * [ ] swap in current.yaml instead of saving history of changes
 * [ ] guard against concurrent modification (through lock files or file watchers)
-* [ ] project tags for tasks
-* [ ] responsive kanban layout when the screen is too small for 3 columns
-* [ ] prompt start pomodoro on task changes (e.g. when status is idle or break ended)
-* [ ] record time when tasks are moved to done

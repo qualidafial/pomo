@@ -2,6 +2,7 @@ package pomo
 
 import (
 	"fmt"
+	"time"
 )
 
 type Status int
@@ -39,16 +40,22 @@ func ParseStatus(s string) (Status, error) {
 }
 
 type Task struct {
-	Status Status
-	Name   string
-	Notes  string
+	Status    Status
+	UpdatedAt time.Time
+	Name      string
+	Notes     string
 }
 
 func (t Task) MarshalYAML() (any, error) {
+	var updatedAt string
+	if !t.UpdatedAt.IsZero() {
+		updatedAt = t.UpdatedAt.Format(time.RFC3339Nano)
+	}
 	return task{
-		Status: t.Status.String(),
-		Name:   t.Name,
-		Notes:  t.Notes,
+		Status:    t.Status.String(),
+		Name:      t.Name,
+		Notes:     t.Notes,
+		UpdatedAt: updatedAt,
 	}, nil
 }
 
@@ -63,16 +70,23 @@ func (t *Task) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 
+	updatedAt, err := parseTime(data.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
 	*t = Task{
-		Status: status,
-		Name:   data.Name,
-		Notes:  data.Notes,
+		Status:    status,
+		Name:      data.Name,
+		Notes:     data.Notes,
+		UpdatedAt: updatedAt,
 	}
 	return nil
 }
 
 type task struct {
-	Status string `yaml:"status"`
-	Name   string `yaml:"name"`
-	Notes  string `yaml:"notes,omitempty"`
+	Status    string `yaml:"status"`
+	Name      string `yaml:"name"`
+	Notes     string `yaml:"notes,omitempty"`
+	UpdatedAt string `yaml:"updatedAt,omitempty"`
 }

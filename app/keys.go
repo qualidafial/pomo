@@ -66,7 +66,6 @@ func DefaultKeyMap() KeyMap {
 func (m KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{
-			m.ToggleHelp,
 			m.Quit,
 			m.StartPomo,
 			m.CancelPomo,
@@ -83,7 +82,6 @@ func (m KeyMap) FullHelp() [][]key.Binding {
 
 func (m KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
-		m.ToggleHelp,
 		m.Quit,
 		m.StartPomo,
 		m.CancelPomo,

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 )
 
 type Config struct {
+	DailyGoal int
+
 	PomodoroDuration  time.Duration
 	BreakDuration     time.Duration
 	LongBreakDuration time.Duration
@@ -18,13 +21,16 @@ func Load(path string) (Config, error) {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(path)
 
+	viper.SetDefault("pomo.daily-goal", 0)
+
 	viper.SetDefault("timer.pomodoro", "25m")
 	viper.SetDefault("timer.break", "5m")
 	viper.SetDefault("timer.long-break", "15m")
 
 	err := viper.SafeWriteConfig()
 	if err != nil {
-		if _, ok := err.(viper.ConfigFileAlreadyExistsError); !ok {
+		var alreadyExistsErr viper.ConfigFileAlreadyExistsError
+		if !errors.As(err, &alreadyExistsErr) {
 			return Config{}, fmt.Errorf("initializing config: %w", err)
 		}
 	}
@@ -35,6 +41,8 @@ func Load(path string) (Config, error) {
 	}
 
 	return Config{
+		DailyGoal: viper.GetInt("pomo.daily-goal"),
+
 		PomodoroDuration:  viper.GetDuration("timer.pomodoro"),
 		BreakDuration:     viper.GetDuration("timer.break"),
 		LongBreakDuration: viper.GetDuration("timer.long-break"),
