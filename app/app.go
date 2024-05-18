@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/gen2brain/beeep"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/config"
 	"github.com/qualidafial/pomo/kanban"
@@ -379,8 +378,8 @@ func (m Model) viewCallToAction() string {
 	default:
 		return ""
 	}
-	width := m.width - CallToAction.GetHorizontalFrameSize()
-	callToAction = wordwrap.String(callToAction, width)
+	frameWidth := CallToAction.GetHorizontalBorderSize() + CallToAction.GetHorizontalMargins()
+	width := max(0, m.width-frameWidth)
 	return CallToAction.Width(width).Render(callToAction)
 }
 
