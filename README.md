@@ -6,34 +6,6 @@ commercial [Pomotodo](pomotodo.com) service.
 Unlike Pomotodo, `pomo` is locally hosted. All data is stored in the `~/.pomo`
 directory in human-readable YAML files.
 
-## Installation
-
-`pomo` requires Go 1.22 or later to install:
-
-```shell
-go install github.com/qualidafial/pomo/cmd/pomo
-```
-
-You can also build the application from the repository root:
-
-```shell
-make
-```
-
-## Configuration
-
-`pomo` may be configured by modifying `~/.pomo/config.yaml`, which is
-automatically generated the first time it runs:
-
-```yaml
-pomo:
-    daily-goal: 8
-timer:
-    break: 5m
-    long-break: 15m
-    pomodoro: 25m
-```
-
 ## Features
 
 * Task management
@@ -63,25 +35,30 @@ timer:
     starts it again later.
 * Saves as you go: every pomodoro action or task change is saved to disk.
 
-## Planned features
+## Installation
 
-* Task management
-  * Manage a list of tags that may be attached to tasks.
-* Pomodoro timer
-  * Active timers run in a background task, so that a notification can be shown
-    even when a `pomo` process is not running.
-* Pomodoro history
-  * User can browse past pomos in the app. They can also view them in plain text
-    in the pomo data folder (probably in `~/.pomo/data/`).
-  * Generate reports based on pomodoro history to facilitate time/task
-    estimates, e.g. for post hoc cap ex reports, or for itemizing hourly
-    billing.
-* Guard against multiple pomodoro processes at the same time--e.g. use a lock
-  file to prevent concurrent use, or use file watchers to automatically reload
-  if the current pomodoro is changed by another process.
+`pomo` requires Go 1.22 or later to install:
 
-## TODOs
+```shell
+go install github.com/qualidafial/pomo/cmd/pomo
+```
 
-* [ ] project tags for tasks
-* [ ] swap in current.yaml instead of saving history of changes
-* [ ] guard against concurrent modification (through lock files or file watchers)
+You can also build the application from the repository root:
+
+```shell
+make
+```
+
+## Configuration
+
+`pomo` may be configured by modifying `~/.pomo/config.yaml`, which is
+automatically generated the first time it runs:
+
+```yaml
+pomo:
+    daily-goal: 8
+timer:
+    break: 5m
+    long-break: 15m
+    pomodoro: 25m
+```
