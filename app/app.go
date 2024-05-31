@@ -30,7 +30,7 @@ const (
 	modeNormal mode = iota
 	modeNewTask
 	modeEditTask
-	modePromptDelete
+	modePrompt
 )
 
 type pomoState int
@@ -67,12 +67,15 @@ type Model struct {
 	tag   int
 	err   error
 
-	kanban       kanban.Model
-	editor       taskedit.Model
-	deletePrompt prompt.Model
-	timer        timer.Model
-	spinner      spinner.Model
-	help         help.Model
+	kanban kanban.Model
+	editor taskedit.Model
+
+	prompt    prompt.Model
+	onConfirm tea.Msg
+
+	timer   timer.Model
+	spinner spinner.Model
+	help    help.Model
 
 	KeyMap KeyMap
 }
@@ -87,12 +90,12 @@ func New(cfg config.Config, s *store.Store) Model {
 		mode:      modeNormal,
 		pomoState: pomoIdle,
 
-		kanban:       kanban.New(defaultTasks()),
-		timer:        timer.New(),
-		spinner:      spinner.New(spinner.WithSpinner(spinner.MiniDot)),
-		editor:       taskedit.New(),
-		deletePrompt: prompt.New(),
-		help:         help.New(),
+		kanban:  kanban.New(defaultTasks()),
+		timer:   timer.New(),
+		spinner: spinner.New(spinner.WithSpinner(spinner.MiniDot)),
+		editor:  taskedit.New(),
+		prompt:  prompt.New(),
+		help:    help.New(),
 
 		KeyMap: DefaultKeyMap(),
 	}
@@ -141,7 +144,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case message.EditTaskMsg:
 		cmd = m.EditTask(msg.Task)
 	case message.PromptDeleteTaskMsg:
-		m.PromptDeleteTask(msg.Task)
+		m.SetPrompt(fmt.Sprintf("Delete task %q?", msg.Task.Name), DeleteTaskMsg{})
 	case message.TasksModifiedMsg:
 		m.current.Tasks = m.kanban.Tasks()
 		m.dirty = true
@@ -216,14 +219,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.dirty = false
+	case DeleteTaskMsg:
+		cmd = m.kanban.Remove()
+	case CancelPomoMsg:
+		if m.pomoState == pomoActive {
+			m.pomoState = pomoIdle
+			m.current.Start = time.Time{}
+			m.current.End = time.Time{}
+			cmd = tea.Batch(m.timer.Reset(), m.saveState())
+		}
+	case CompletePomoMsg:
+		if m.pomoState == pomoEnded {
+			cmd = m.completePomo()
+		}
+	case CancelBreakMsg:
+		if m.pomoState == pomoBreak || m.pomoState == pomoLongBreak {
+			m.pomoState = pomoIdle
+			m.current.Start = time.Time{}
+			m.current.End = time.Time{}
+			cmd = m.saveState()
+		}
 	default:
 		switch m.mode {
 		case modeNormal:
 			m, cmd = m.updateNormal(msg)
 		case modeNewTask, modeEditTask:
 			m, cmd = m.updateEditing(msg)
-		case modePromptDelete:
-			m, cmd = m.updatePromptDelete(msg)
+		case modePrompt:
+			m, cmd = m.updatePrompt(msg)
 		}
 	}
 
@@ -238,6 +261,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.KeyMap.DeleteTask.SetEnabled(selection)
 
 	return m, cmd
+}
+
+func (m *Model) SetPrompt(prompt string, onConfirm tea.Msg) {
+	m.mode = modePrompt
+	m.prompt.Prompt = prompt
+	m.onConfirm = onConfirm
 }
 
 func (m Model) updateNormal(msg tea.Msg) (Model, tea.Cmd) {
@@ -266,17 +295,11 @@ func (m Model) updateNormal(msg tea.Msg) (Model, tea.Cmd) {
 			m.current.End = m.current.Start.Add(m.config.PomodoroDuration)
 			cmd = tea.Batch(m.timer.Start(m.current.End), m.saveState())
 		case key.Matches(msg, m.KeyMap.CancelPomo):
-			m.pomoState = pomoIdle
-			m.current.Start = time.Time{}
-			m.current.End = time.Time{}
-			cmd = tea.Batch(m.timer.Reset(), m.saveState())
+			m.SetPrompt("Cancel pomodoro?", CancelPomoMsg{})
 		case key.Matches(msg, m.KeyMap.StartBreak):
-			cmd = m.completePomo()
+			m.SetPrompt("Complete pomodoro and start break?", CompletePomoMsg{})
 		case key.Matches(msg, m.KeyMap.CancelBreak):
-			m.pomoState = pomoIdle
-			m.current.Start = time.Time{}
-			m.current.End = time.Time{}
-			cmd = m.saveState()
+			m.SetPrompt("Cancel break early?", CancelBreakMsg{})
 		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		default:
@@ -310,18 +333,22 @@ func (m Model) updateEditing(msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) updatePromptDelete(msg tea.Msg) (Model, tea.Cmd) {
+func (m Model) updatePrompt(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
-	case prompt.PromptResultMsg:
-		if msg.ID == m.deletePrompt.ID() {
-			if msg.Result {
-				cmd = m.kanban.Remove()
+	case prompt.ConfirmMsg:
+		if msg.ID == m.prompt.ID() {
+			m.mode = modeNormal
+			cmd = func() tea.Msg {
+				return m.onConfirm
 			}
+		}
+	case prompt.CancelMsg:
+		if msg.ID == m.prompt.ID() {
 			m.mode = modeNormal
 		}
 	default:
-		m.deletePrompt, cmd = m.deletePrompt.Update(msg)
+		m.prompt, cmd = m.prompt.Update(msg)
 	}
 	return m, cmd
 }
@@ -354,8 +381,8 @@ func (m Model) View() string {
 	switch m.mode {
 	case modeNewTask, modeEditTask:
 		popup = m.editor.View()
-	case modePromptDelete:
-		popup = m.deletePrompt.View()
+	case modePrompt:
+		popup = m.prompt.View()
 	}
 	if popup != "" {
 		w, h := lipgloss.Size(popup)
@@ -480,12 +507,6 @@ func (m *Model) EditTask(task pomo.Task) tea.Cmd {
 	return m.editor.Focus()
 }
 
-func (m *Model) PromptDeleteTask(task pomo.Task) {
-	m.mode = modePromptDelete
-	prompt := fmt.Sprintf("Delete task %q?", task.Name)
-	m.deletePrompt.SetPrompt(prompt)
-}
-
 func (m Model) FullHelp() [][]key.Binding {
 	return append(m.KeyMap.FullHelp(), m.kanban.KeyMap.FullHelp()...)
 }
@@ -589,3 +610,10 @@ type debounceSaveMsg struct {
 }
 
 type clearErrMsg struct{}
+
+type DeleteTaskMsg struct{}
+
+type StartPomoMsg struct{}
+type CancelPomoMsg struct{}
+type CompletePomoMsg struct{}
+type CancelBreakMsg struct{}
