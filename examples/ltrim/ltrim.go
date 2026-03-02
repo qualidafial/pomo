@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	gcolor "image/color"
 	"io"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/padding"
 	"github.com/muesli/reflow/truncate"
 	"github.com/qualidafial/pomo/color"
@@ -23,10 +24,10 @@ func main() {
 	}
 }
 
-func foreground(s string, color lipgloss.TerminalColor) string {
+func foreground(s string, color gcolor.Color) string {
 	return lipgloss.NewStyle().Foreground(color).Render(s)
 }
 
-func background(s string, color lipgloss.TerminalColor) string {
+func background(s string, color gcolor.Color) string {
 	return lipgloss.NewStyle().Background(color).Render(s)
 }

@@ -1,12 +1,12 @@
 package taskedit
 
 import (
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/qualidafial/pomo"
 	"github.com/qualidafial/pomo/message"
 )
@@ -81,7 +81,7 @@ func (m *Model) focusField(f field) tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.Save) || key.Matches(msg, m.KeyMap.Enter):
 			return m, message.SaveTask(m.Task())
@@ -179,7 +179,7 @@ func (m *Model) layout() {
 	w := m.maxWidth - m.Styles.Frame.GetHorizontalFrameSize()
 	h := m.maxHeight - m.Styles.Frame.GetVerticalFrameSize()
 
-	m.name.Width = w - 3
+	m.name.SetWidth(w - 3)
 
 	notesHeight := h - 4
 	if notesHeight > 4 {
@@ -188,5 +188,5 @@ func (m *Model) layout() {
 	m.notes.SetWidth(w)
 	m.notes.SetHeight(notesHeight)
 
-	m.help.Width = w
+	m.help.SetWidth(w)
 }

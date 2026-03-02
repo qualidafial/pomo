@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 func main() {
@@ -45,7 +45,7 @@ func printColors(from, to int, perLine int, foreground bool, style lipgloss.Styl
 		} else {
 			style = style.Background(color).Foreground(altColor)
 		}
-		fmt.Print(style.Render(string(color)))
+		fmt.Print(style.Render(strconv.Itoa(i)))
 
 		if i > from && (i-from+1)%perLine == 0 {
 			fmt.Println()

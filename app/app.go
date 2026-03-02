@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/log"
 	"github.com/gen2brain/beeep"
 	"github.com/qualidafial/pomo"
@@ -103,8 +103,6 @@ func New(cfg config.Config, s *store.Store) Model {
 
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
-		tea.EnterAltScreen,
-		tea.DisableMouse,
 		m.loadState(),
 		m.spinner.Tick,
 	)
@@ -273,7 +271,7 @@ func (m Model) updateNormal(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.KeyMap.ToggleHelp):
 			m.ToggleHelp()
@@ -357,7 +355,7 @@ func (m *Model) ToggleHelp() {
 	m.help.ShowAll = !m.help.ShowAll
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	m.layout()
 
 	callToAction := m.viewCallToAction()
@@ -390,7 +388,11 @@ func (m Model) View() string {
 		view = overlay.Overlay(view, popup, x, y)
 	}
 
-	return view
+	var v tea.View
+	v.SetContent(view)
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeNone
+	return v
 }
 
 func (m Model) viewCallToAction() string {
@@ -516,7 +518,7 @@ func (m Model) ShortHelp() []key.Binding {
 }
 
 func (m *Model) layout() {
-	m.help.Width = m.width - Help.GetHorizontalFrameSize()
+	m.help.SetWidth(m.width - Help.GetHorizontalFrameSize())
 
 	var ctaHeight int
 	if cta := m.viewCallToAction(); cta != "" {
