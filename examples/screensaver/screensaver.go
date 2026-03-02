@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/qualidafial/pomo/color"
 	"github.com/qualidafial/pomo/overlay"
 )
@@ -65,7 +65,7 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(tea.EnterAltScreen, m.tick())
+	return m.tick()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -74,11 +74,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c":
 			cmd = tea.Quit
-		case " ":
+		case "space":
 			m.paused = !m.paused
 			if !m.paused {
 				cmd = m.tick()
@@ -105,7 +105,7 @@ func (m model) tick() tea.Cmd {
 	})
 }
 
-func (m model) View() string {
+func (m model) View() tea.View {
 	var elements []overlay.Element
 	elements = append(elements, overlay.DefaultElement{
 		X: 0,
@@ -119,8 +119,14 @@ func (m model) View() string {
 	for _, f := range m.floaters {
 		elements = append(elements, f)
 	}
-	return overlay.Composite(elements,
-		overlay.WithMaxSize(m.width, m.height))
+
+	var v tea.View
+	v.SetContent(
+		overlay.Composite(elements,
+			overlay.WithMaxSize(m.width, m.height)),
+	)
+	v.AltScreen = true
+	return v
 }
 
 type floater struct {

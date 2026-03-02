@@ -3,8 +3,8 @@ package modal
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/truncate"
 	"github.com/qualidafial/pomo/skip"
 )
@@ -38,19 +38,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) View() string {
-	background := m.background.View()
-	foreground := m.foreground.View()
+func (m Model) View() tea.View {
+	view := m.background.View()
 
-	bw, bh := lipgloss.Size(background)
-	fw, fh := lipgloss.Size(foreground)
+	bg := view.Content
+	fg := m.foreground.View().Content
+
+	bw, bh := lipgloss.Size(bg)
+	fw, fh := lipgloss.Size(fg)
 
 	// foreground completely hides background
 	if fw >= bw && fh >= bh {
-		return foreground
+		view.SetContent(fg)
+		return view
 	}
 
-	bgLines := strings.Split(background, "\n")
+	bgLines := strings.Split(bg, "\n")
 
 	// foreground is wider than background
 	if fw >= bw {
@@ -58,10 +61,14 @@ func (m Model) View() string {
 		bottom := top + fh
 		bgUpper := strings.Join(bgLines[0:top], "\n")
 		bgLower := strings.Join(bgLines[bottom:fh], "\n")
-		return lipgloss.JoinVertical(lipgloss.Left,
-			bgUpper,
-			foreground,
-			bgLower)
+
+		view.SetContent(
+			lipgloss.JoinVertical(lipgloss.Left,
+				bgUpper,
+				fg,
+				bgLower),
+		)
+		return view
 	}
 
 	// foreground is taller than background
@@ -76,10 +83,13 @@ func (m Model) View() string {
 			bgRight = append(bgRight, skip.String(line, uint(right)))
 		}
 
-		lipgloss.JoinHorizontal(lipgloss.Center,
-			strings.Join(bgLeft, "\n"),
-			foreground,
-			strings.Join(bgRight, "\n"))
+		view.SetContent(
+			lipgloss.JoinHorizontal(lipgloss.Center,
+				strings.Join(bgLeft, "\n"),
+				fg,
+				strings.Join(bgRight, "\n")),
+		)
+		return view
 	}
 
 	// foreground is shorter and narrower than background
@@ -99,14 +109,17 @@ func (m Model) View() string {
 		bgRight = append(bgRight, skip.String(line, uint(right)))
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		bgTop,
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			strings.Join(bgLeft, "\n"),
-			foreground,
-			strings.Join(bgRight, "\n")),
-		bgBottom,
+	view.SetContent(
+		lipgloss.JoinVertical(lipgloss.Left,
+			bgTop,
+			lipgloss.JoinHorizontal(lipgloss.Left,
+				strings.Join(bgLeft, "\n"),
+				fg,
+				strings.Join(bgRight, "\n")),
+			bgBottom,
+		),
 	)
+	return view
 }
 
 func Result(result any) tea.Cmd {

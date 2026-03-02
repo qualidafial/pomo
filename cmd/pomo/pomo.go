@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/log"
 	"github.com/qualidafial/pomo/app"
 	"github.com/qualidafial/pomo/config"
