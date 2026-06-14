@@ -235,7 +235,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pomoState = pomoIdle
 			m.current.Start = time.Time{}
 			m.current.End = time.Time{}
-			cmd = m.saveState()
+			cmd = tea.Batch(m.timer.Reset(), m.saveState())
 		}
 	default:
 		switch m.mode {
